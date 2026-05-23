@@ -1,5 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
+import {
+  FaInstagram,
+  FaTwitter,
+  FaLinkedin,
+  FaTiktok,
+} from "react-icons/fa";
 
 // ─── Design system tokens (from globals.css) ──────────────────────────────
 // --green: #00C98D | --surface: #0f1117 | --surface-2: #161b25
@@ -41,7 +47,7 @@ function Navbar() {
       <div className="h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 no-underline">
-          <Image src="/logo.png" alt="logo" width={200} height={200} />
+          <Image src="/logo2.png" alt="logo" width={150} height={50} />
         </Link>
 
         {/* Nav links */}
@@ -465,28 +471,28 @@ function Stats() {
 const PLANS = [
   {
     name: "Starter",
-    price: "₦2000",
-    period: null,
-    desc: "For small businesses",
-    features: ["5 posts / month", "1 platform", "AI caption generation", "Media library"],
+    price: "₦3000",
+    period: "/mo",
+    desc: "For small businesses getting started online.",
+    features: ["1 platform", "10 AI-generated posts monthly", "Captions & hashtags", "Content planning", "Upload product photos/videos"],
     cta: "Get started free",
     featured: false,
   },
   {
     name: "Pro",
-    price: "₦20,000",
+    price: "₦10,000",
     period: "/mo",
-    desc: "For businesses growing online.",
-    features: ["Unlimited posts", "3 platforms", "AI captions + brand tone", "Auto schedule & publish"],
+    desc: "For growing businesses that want consistent online presence.",
+    features: ["3 social platforms", "More monthly posts", "Smart scheduling", "AI content planning", "Priority support"],
     cta: "Start Pro",
     featured: true,
   },
   {
     name: "Elite",
-    price: "₦30,000",
+    price: "₦25,000",
     period: "/mo",
-    desc: "For teams managing multiple brands.",
-    features: ["Everything in Pro", "4 platforms", "Graphics Generator", "Advanced analytics"],
+    desc: "For businesses that want full content automation.",
+    features: ["4 social platforms", "Unlimited posting", "AI-generated graphics", "Advanced content strategy", "Premium templates", "Faster AI processing"],
     cta: "Start ",
     featured: false,
   },
@@ -604,7 +610,6 @@ function Cta() {
           Get started for free
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </Link>
-        <p style={{ fontSize: 12, color: "var(--text-3)" }}>No credit card required.</p>
       </div>
     </section>
   );
@@ -615,39 +620,226 @@ function Cta() {
 // ─────────────────────────────────────────────────────────────────────────────
 function Footer() {
   return (
-    <footer style={{ borderTop: "1px solid var(--border)", padding: "40px 24px" }}>
-      <div
-        className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between"
-        style={{ gap: 20 }}
-      >
-        {/* Brand */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 26, height: 26, borderRadius: 6, background: "var(--green)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0a0e14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-            </svg>
+    <footer
+      style={{
+        borderTop: "1px solid var(--border)",
+        padding: "60px 24px 32px",
+        marginTop: 80,
+      }}
+    >
+      <div className="max-w-6xl mx-auto">
+        {/* Top Section */}
+        <div
+          className="flex flex-col md:flex-row justify-between"
+          style={{ gap: 40 }}
+        >
+          {/* Brand */}
+          <div style={{ maxWidth: 320}}>
+            <div>
+              <Image src="/logo2.png" alt="logo" width={150} height={50} />
+            </div>
+
+            <p
+              style={{
+                fontSize: 14,
+                lineHeight: 1.7,
+                color: "var(--text-3)",
+                marginTop: "10px"
+              }}
+            >
+              AI-powered content automation platform helping businesses
+              stay active online without the stress of daily posting.
+            </p>
           </div>
-          <span className="font-display font-bold" style={{ fontSize: 14, color: "var(--text-1)" }}>Postora</span>
+
+          {/* Navigation */}
+          <div
+            className="grid grid-cols-2 md:grid-cols-3"
+            style={{ gap: 40 }}
+          >
+            {/* Product */}
+            <div>
+              <h4
+                style={{
+                  color: "var(--text-1)",
+                  marginBottom: 14,
+                  fontSize: 14,
+                  fontWeight: 600,
+                }}
+              >
+                Product
+              </h4>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 10,
+                }}
+              >
+                {["Features", "Pricing", "How it Works"].map((item) => (
+                  <Link
+                    key={item}
+                    href={`#${item.toLowerCase()}`}
+                    className="hover:text-white transition-colors"
+                    style={{
+                      fontSize: 14,
+                      color: "var(--text-3)",
+                      textDecoration: "none",
+                    }}
+                  >
+                    {item}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {/* Company */}
+            <div>
+              <h4
+                style={{
+                  color: "var(--text-1)",
+                  marginBottom: 14,
+                  fontSize: 14,
+                  fontWeight: 600,
+                }}
+              >
+                Company
+              </h4>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 10,
+                }}
+              >
+                {["About", "Contact", "Careers"].map((item) => (
+                  <Link
+                    key={item}
+                    href={`/${item.toLowerCase()}`}
+                    className="hover:text-white transition-colors"
+                    style={{
+                      fontSize: 14,
+                      color: "var(--text-3)",
+                      textDecoration: "none",
+                    }}
+                  >
+                    {item}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {/* Legal */}
+            <div>
+              <h4
+                style={{
+                  color: "var(--text-1)",
+                  marginBottom: 14,
+                  fontSize: 14,
+                  fontWeight: 600,
+                }}
+              >
+                Legal
+              </h4>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 10,
+                }}
+              >
+                {["Privacy", "Terms"].map((item) => (
+                  <Link
+                    key={item}
+                    href={`/${item.toLowerCase()}`}
+                    className="hover:text-white transition-colors"
+                    style={{
+                      fontSize: 14,
+                      color: "var(--text-3)",
+                      textDecoration: "none",
+                    }}
+                  >
+                    {item}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Links */}
-        <nav style={{ display: "flex", gap: 24, fontSize: 13, color: "var(--text-3)" }}>
-          {["Privacy", "Terms", "Contact"].map((l) => (
-            <Link
-              key={l}
-              href={`/${l.toLowerCase()}`}
-              style={{ color: "inherit", textDecoration: "none" }}
-              className="hover:text-white transition-colors"
-            >
-              {l}
-            </Link>
-          ))}
-        </nav>
+        {/* Bottom Section */}
+        <div
+          className="flex flex-col md:flex-row items-center justify-between"
+          style={{
+            borderTop: "1px solid var(--border)",
+            marginTop: 40,
+            paddingTop: 24,
+            gap: 20,
+          }}
+        >
+          {/* Copyright */}
+          <p
+            style={{
+              fontSize: 13,
+              color: "var(--text-3)",
+            }}
+          >
+            © {new Date().getFullYear()} Postora. All rights reserved.
+          </p>
 
-        {/* Copyright */}
-        <p style={{ fontSize: 12, color: "var(--text-3)" }}>
-          © {new Date().getFullYear()} Postora. All rights reserved.
-        </p>
+          {/* Social Icons */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+            }}
+          >
+            {[
+              {
+                icon: <FaInstagram />,
+                link: "https://instagram.com",
+              },
+              {
+                icon: <FaTwitter />,
+                link: "https://twitter.com",
+              },
+              {
+                icon: <FaLinkedin />,
+                link: "https://linkedin.com",
+              },
+              {
+                icon: <FaTiktok />,
+                link: "https://tiktok.com",
+              },
+            ].map((social, i) => (
+              <a
+                key={i}
+                href={social.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:scale-110 transition-all"
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "var(--text-2)",
+                  fontSize: 16,
+                  textDecoration: "none",
+                }}
+              >
+                {social.icon}
+              </a>
+            ))}
+          </div>
+        </div>
       </div>
     </footer>
   );
