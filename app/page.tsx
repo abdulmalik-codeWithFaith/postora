@@ -471,7 +471,7 @@ function Stats() {
 const PLANS = [
   {
     name: "Starter",
-    price: "₦3000",
+    price: "₦3,000",
     period: "/mo",
     desc: "For small businesses getting started online.",
     features: ["1 platform", "10 AI-generated posts monthly", "Captions & hashtags", "Content planning", "Upload product photos/videos"],
