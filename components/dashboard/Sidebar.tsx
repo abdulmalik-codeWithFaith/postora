@@ -105,205 +105,320 @@ const NAV_BOTTOM = [
   },
 ];
 
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
+// Items to show in the mobile bottom bar (pick the most important 5)
+const MOBILE_NAV_ITEMS = [
+  NAV_MAIN[0], // Dashboard
+  NAV_MAIN[1], // Media Library
+  NAV_MAIN[2], // AI Captions
+  NAV_MAIN[4], // Schedule & Publish
+  NAV_MAIN[5], // Analytics
+];
+
+// ─── Sidebar (desktop only) ───────────────────────────────────────────────────
 export default function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <aside
-      style={{
-        width: collapsed ? 68 : 240,
-        minHeight: "100vh",
-        background: "var(--surface-2)",
-        borderRight: "1px solid var(--border)",
-        display: "flex",
-        flexDirection: "column",
-        transition: "width 0.22s cubic-bezier(0.4,0,0.2,1)",
-        flexShrink: 0,
-        position: "sticky",
-        top: 0,
-        overflow: "hidden",
-      }}
-    >
-      {/* ── Logo + collapse toggle ─────────────────────────────────────── */}
-      <div
+    <>
+      {/* ── Desktop Sidebar ─────────────────────────────────────────────── */}
+      <aside
         style={{
-          height: 64,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: collapsed ? "0 14px" : "0 16px 0 20px",
-          borderBottom: "1px solid var(--border)",
+          width: collapsed ? 68 : 240,
+          minHeight: "100vh",
+          background: "var(--surface-2)",
+          borderRight: "1px solid var(--border)",
+          flexDirection: "column",
+          transition: "width 0.22s cubic-bezier(0.4,0,0.2,1)",
           flexShrink: 0,
+          position: "sticky",
+          top: 0,
+          overflow: "hidden",
         }}
+        className="postora-sidebar"
       >
-        {/* Logo */}
-        <Link
-          href="/dashboard"
+        {/* ── Logo + collapse toggle ───────────────────────────────────── */}
+        <div
           style={{
-            display: "flex", alignItems: "center", gap: 9,
-            textDecoration: "none", overflow: "hidden", flexShrink: 0,
-          }}
-        >
-          <div
-            style={{
-              width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-              background: "var(--green)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0a0e14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-            </svg>
-          </div>
-          {!collapsed && (
-            <span
-              style={{
-                fontFamily: "var(--font-sora), sans-serif",
-                fontWeight: 700, fontSize: 16,
-                color: "var(--text-1)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Postora
-            </span>
-          )}
-        </Link>
-
-        {/* Collapse toggle */}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          style={{
-            background: "none", border: "none", cursor: "pointer",
-            color: "var(--text-3)", padding: 6, borderRadius: 6,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            transition: "color 0.15s, background 0.15s",
+            height: 64,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: collapsed ? "0 14px" : "0 16px 0 20px",
+            borderBottom: "1px solid var(--border)",
             flexShrink: 0,
           }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.color = "var(--text-1)";
-            (e.currentTarget as HTMLButtonElement).style.background = "var(--surface-3)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.color = "var(--text-3)";
-            (e.currentTarget as HTMLButtonElement).style.background = "none";
-          }}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          {collapsed ? <ChevronRight /> : <ChevronLeft />}
-        </button>
-      </div>
-
-      {/* ── Plan badge ────────────────────────────────────────────────────── */}
-      {!collapsed && (
-        <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
-          <div
+          <Link
+            href="/dashboard"
             style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "8px 12px",
-              background: "var(--green-muted)",
-              border: "1px solid rgba(0,201,141,0.15)",
-              borderRadius: 10,
+              display: "flex", alignItems: "center", gap: 9,
+              textDecoration: "none", overflow: "hidden", flexShrink: 0,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-              <div
-                style={{
-                  width: 6, height: 6, borderRadius: "50%",
-                  background: "var(--green)",
-                  boxShadow: "0 0 6px var(--green)",
-                }}
-              />
-              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--green)" }}>Pro Plan</span>
-            </div>
-            <Link
-              href="/dashboard/settings?tab=billing"
-              style={{ fontSize: 11, color: "var(--text-3)", textDecoration: "none" }}
+            <div
+              style={{
+                width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+                background: "var(--green)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
             >
-              Upgrade
-            </Link>
-          </div>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0a0e14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
+            </div>
+            {!collapsed && (
+              <span
+                style={{
+                  fontFamily: "var(--font-sora), sans-serif",
+                  fontWeight: 700, fontSize: 16,
+                  color: "var(--text-1)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Postora
+              </span>
+            )}
+          </Link>
+
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              color: "var(--text-3)", padding: 6, borderRadius: 6,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              transition: "color 0.15s, background 0.15s",
+              flexShrink: 0,
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--text-1)";
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--surface-3)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--text-3)";
+              (e.currentTarget as HTMLButtonElement).style.background = "none";
+            }}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? <ChevronRight /> : <ChevronLeft />}
+          </button>
         </div>
-      )}
 
-      {/* ── Main nav ──────────────────────────────────────────────────────── */}
-      <nav style={{ flex: 1, padding: "12px 10px", display: "flex", flexDirection: "column", gap: 2, overflowY: "auto" }}>
-
+        {/* ── Plan badge ──────────────────────────────────────────────────── */}
         {!collapsed && (
-          <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.09em", textTransform: "uppercase", color: "var(--text-3)", padding: "4px 10px 8px" }}>
-            Main
-          </p>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
+            <div
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "8px 12px",
+                background: "var(--green-muted)",
+                border: "1px solid rgba(0,201,141,0.15)",
+                borderRadius: 10,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <div
+                  style={{
+                    width: 6, height: 6, borderRadius: "50%",
+                    background: "var(--green)",
+                    boxShadow: "0 0 6px var(--green)",
+                  }}
+                />
+                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--green)" }}>Pro Plan</span>
+              </div>
+              <Link
+                href="/dashboard/settings?tab=billing"
+                style={{ fontSize: 11, color: "var(--text-3)", textDecoration: "none" }}
+              >
+                Upgrade
+              </Link>
+            </div>
+          </div>
         )}
 
-        {NAV_MAIN.map((item) => {
+        {/* ── Main nav ────────────────────────────────────────────────────── */}
+        <nav style={{ flex: 1, padding: "12px 10px", display: "flex", flexDirection: "column", gap: 2, overflowY: "auto" }}>
+          {!collapsed && (
+            <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.09em", textTransform: "uppercase", color: "var(--text-3)", padding: "4px 10px 8px" }}>
+              Main
+            </p>
+          )}
+          {NAV_MAIN.map((item) => {
+            const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+            return (
+              <NavItem key={item.href} item={item} active={active} collapsed={collapsed} />
+            );
+          })}
+        </nav>
+
+        {/* ── Bottom nav ──────────────────────────────────────────────────── */}
+        <div style={{ padding: "10px 10px 16px", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 2 }}>
+          {NAV_BOTTOM.map((item) => {
+            const active = pathname === item.href;
+            return (
+              <NavItem key={item.href} item={item} active={active} collapsed={collapsed} />
+            );
+          })}
+
+          {/* User profile */}
+          <div
+            style={{
+              marginTop: 8,
+              display: "flex", alignItems: "center", gap: 10,
+              padding: collapsed ? "8px 6px" : "8px 10px",
+              borderRadius: 10,
+              cursor: "pointer",
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.background = "var(--surface-3)")}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.background = "transparent")}
+          >
+            <div
+              style={{
+                width: 30, height: 30, borderRadius: "50%", flexShrink: 0,
+                background: "linear-gradient(135deg, #00C98D 0%, #0f6e56 100%)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 12, fontWeight: 700, color: "#0a0e14",
+              }}
+            >
+              JD
+            </div>
+            {!collapsed && (
+              <div style={{ overflow: "hidden", flex: 1 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  Jane Doe
+                </p>
+                <p style={{ fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  jane@example.com
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </aside>
+
+      {/* ── Mobile Bottom Bar ───────────────────────────────────────────────── */}
+      <nav className="postora-bottom-bar">
+        {MOBILE_NAV_ITEMS.map((item) => {
           const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
           return (
-            <NavItem
+            <Link
               key={item.href}
-              item={item}
-              active={active}
-              collapsed={collapsed}
-            />
+              href={item.href}
+              className={`postora-bottom-bar__item${active ? " postora-bottom-bar__item--active" : ""}`}
+            >
+              <span className="postora-bottom-bar__icon">
+                {item.icon}
+              </span>
+              <span className="postora-bottom-bar__label">{item.label}</span>
+              {item.badge && (
+                <span className="postora-bottom-bar__badge">{item.badge}</span>
+              )}
+            </Link>
           );
         })}
       </nav>
 
-      {/* ── Bottom nav ────────────────────────────────────────────────────── */}
-      <div style={{ padding: "10px 10px 16px", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 2 }}>
-        {NAV_BOTTOM.map((item) => {
-          const active = pathname === item.href;
-          return (
-            <NavItem
-              key={item.href}
-              item={item}
-              active={active}
-              collapsed={collapsed}
-            />
-          );
-        })}
+      {/* ── Responsive styles ───────────────────────────────────────────────── */}
+      <style>{`
+        /* Desktop: show sidebar, hide bottom bar */
+        .postora-sidebar {
+          display: flex !important;
+        }
+        .postora-bottom-bar {
+          display: none;
+        }
 
-        {/* User profile */}
-        <div
-          style={{
-            marginTop: 8,
-            display: "flex", alignItems: "center", gap: 10,
-            padding: collapsed ? "8px 6px" : "8px 10px",
-            borderRadius: 10,
-            cursor: "pointer",
-            transition: "background 0.15s",
-          }}
-          onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.background = "var(--surface-3)")}
-          onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.background = "transparent")}
-        >
-          {/* Avatar */}
-          <div
-            style={{
-              width: 30, height: 30, borderRadius: "50%", flexShrink: 0,
-              background: "linear-gradient(135deg, #00C98D 0%, #0f6e56 100%)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 12, fontWeight: 700, color: "#0a0e14",
-            }}
-          >
-            JD
-          </div>
-          {!collapsed && (
-            <div style={{ overflow: "hidden", flex: 1 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                Jane Doe
-              </p>
-              <p style={{ fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                jane@example.com
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    </aside>
+        /* Mobile: hide sidebar, show bottom bar */
+        @media (max-width: 768px) {
+          .postora-sidebar {
+            display: none !important;
+          }
+
+          .postora-bottom-bar {
+            display: flex;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: var(--surface-2);
+            border-top: 1px solid var(--border);
+            /* Safe area for phones with home indicator */
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+          }
+
+          .postora-bottom-bar__item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            padding: 10px 4px 8px;
+            text-decoration: none;
+            color: var(--text-3);
+            font-size: 10px;
+            font-weight: 500;
+            transition: color 0.15s;
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+          }
+
+          .postora-bottom-bar__item--active {
+            color: var(--green);
+          }
+
+          /* Top active indicator bar */
+          .postora-bottom-bar__item--active::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 24px;
+            height: 2px;
+            border-radius: 0 0 2px 2px;
+            background: var(--green);
+          }
+
+          .postora-bottom-bar__icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: inherit;
+          }
+
+          .postora-bottom-bar__label {
+            font-size: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 60px;
+            text-align: center;
+          }
+
+          .postora-bottom-bar__badge {
+            position: absolute;
+            top: 6px;
+            right: calc(50% - 16px);
+            font-size: 8px;
+            font-weight: 700;
+            padding: 1px 4px;
+            border-radius: 999px;
+            background: var(--green-muted);
+            color: var(--green);
+            border: 1px solid rgba(0,201,141,0.2);
+            letter-spacing: 0.04em;
+            line-height: 1.4;
+          }
+        }
+      `}</style>
+    </>
   );
 }
 
-// ─── Nav item ─────────────────────────────────────────────────────────────────
+// ─── Nav item (desktop sidebar) ───────────────────────────────────────────────
 function NavItem({
   item, active, collapsed,
 }: {
@@ -342,7 +457,6 @@ function NavItem({
         }
       }}
     >
-      {/* Active indicator */}
       {active && (
         <div
           style={{
@@ -352,13 +466,9 @@ function NavItem({
           }}
         />
       )}
-
-      {/* Icon */}
       <span style={{ color: active ? "var(--green)" : "inherit", flexShrink: 0, display: "flex" }}>
         {item.icon}
       </span>
-
-      {/* Label + badge */}
       {!collapsed && (
         <>
           <span style={{ flex: 1 }}>{item.label}</span>
