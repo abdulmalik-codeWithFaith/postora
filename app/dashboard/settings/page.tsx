@@ -435,7 +435,7 @@ function BillingTab() {
                 <button
                   disabled={isCurrent}
                   style={{
-                    padding: "9px", border: "none", borderRadius: 9,
+                    padding: "9px", borderRadius: 9,
                     background: isCurrent ? "transparent" : "var(--green)",
                     color: isCurrent ? "var(--text-3)" : "#0a0e14",
                     fontSize: 12, fontWeight: 600, cursor: isCurrent ? "default" : "pointer",

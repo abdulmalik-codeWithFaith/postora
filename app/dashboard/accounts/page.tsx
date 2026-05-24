@@ -113,7 +113,7 @@ const PLATFORM_CONFIG: Record<PlatformName, { color: string; bg: string; icon: R
 };
 
 // ─── Current plan (mock) ──────────────────────────────────────────────────────
-const USER_PLAN = "Pro"; // Starter | Pro | Elite
+const USER_PLAN: "Starter" | "Pro" | "Elite" = "Pro";
 const PLAN_LIMITS: Record<string, number> = { Starter: 1, Pro: 3, Elite: 4 };
 
 // ─────────────────────────────────────────────────────────────────────────────

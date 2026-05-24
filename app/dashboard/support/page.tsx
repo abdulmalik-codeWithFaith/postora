@@ -221,13 +221,13 @@ export default function SupportPage() {
                     key={cat}
                     onClick={() => setFaqCategory(cat)}
                     style={{
-                      padding: "5px 14px", borderRadius: 999, border: "none",
+                      padding: "5px 14px", borderRadius: 999,
                       fontSize: 12, fontWeight: 500, cursor: "pointer",
                       background: faqCategory === cat ? "var(--green-muted)" : "var(--surface-2)",
                       color: faqCategory === cat ? "var(--green)" : "var(--text-3)",
                       border: `1px solid ${faqCategory === cat ? "rgba(0,201,141,0.25)" : "var(--border)"}`,
                       transition: "all 0.15s",
-                    } as React.CSSProperties}
+                    }}
                   >
                     {cat}
                   </button>
