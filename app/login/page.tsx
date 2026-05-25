@@ -3,22 +3,85 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  sendEmailVerification,
+  signOut,
+} from "firebase/auth";
+import { auth, googleProvider } from "@/lib/firebase";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [unverified, setUnverified] = useState(false); // shows resend button
+  const [resendSent, setResendSent] = useState(false);
 
+  // ── Email / password login ─────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError("");
+    setUnverified(false);
     setLoading(true);
-    // TODO: wire up Firebase Auth — signInWithEmailAndPassword(auth, email, password)
-    setTimeout(() => setLoading(false), 1500);
+
+    try {
+      const { user } = await signInWithEmailAndPassword(auth, email, password);
+
+      // Block login if email not verified
+      if (!user.emailVerified) {
+        await signOut(auth); // kick them out immediately
+        setUnverified(true);
+        setError("Please verify your email before logging in.");
+        return;
+      }
+
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(parseFirebaseError(err.code));
+    } finally {
+      setLoading(false);
+    }
   }
 
+  // ── Google login ───────────────────────────────────────────────────────────
   async function handleGoogle() {
-    // TODO: wire up Firebase Auth — signInWithPopup(auth, new GoogleAuthProvider())
+    setError("");
+    setUnverified(false);
+    setGoogleLoading(true);
+
+    try {
+      // Google accounts are always pre-verified
+      await signInWithPopup(auth, googleProvider);
+      router.push("/dashboard");
+    } catch (err: any) {
+      if (err.code !== "auth/popup-closed-by-user") {
+        setError(parseFirebaseError(err.code));
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  }
+
+  // ── Resend verification email ──────────────────────────────────────────────
+  async function handleResend() {
+    setError("");
+    try {
+      // Sign in temporarily just to get the user object, then sign out again
+      const { user } = await signInWithEmailAndPassword(auth, email, password);
+      await sendEmailVerification(user, {
+        url: `${window.location.origin}/dashboard`,
+      });
+      await signOut(auth);
+      setResendSent(true);
+    } catch {
+      setError("Could not resend email. Please try again.");
+    }
   }
 
   return (
@@ -33,7 +96,6 @@ export default function LoginPage() {
         padding: "24px 16px",
       }}
     >
-      {/* ── Card ─────────────────────────────────────────────────────────── */}
       <div
         style={{
           width: "100%",
@@ -47,92 +109,76 @@ export default function LoginPage() {
           gap: 28,
         }}
       >
-
-        {/* ── Logo + heading ──────────────────────────────────────────────── */}
+        {/* Logo + heading */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, textAlign: "center" }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
-            <Image src="/logo2.png" alt="logo" width={150} height={50}/>
+            <Image src="/logo2.png" alt="logo" width={150} height={50} />
           </Link>
-
           <div>
-            <h1
-              style={{
-                fontFamily: "var(--font-sora), sans-serif",
-                fontWeight: 700, fontSize: 22,
-                color: "var(--text-1)",
-                letterSpacing: "-0.02em",
-                marginBottom: 6,
-              }}
-            >
+            <h1 style={{ fontFamily: "var(--font-sora), sans-serif", fontWeight: 700, fontSize: 22, color: "var(--text-1)", letterSpacing: "-0.02em", marginBottom: 6 }}>
               Welcome back
             </h1>
-            <p style={{ fontSize: 14, color: "var(--text-2)" }}>
-              Log in to your Postora account
-            </p>
+            <p style={{ fontSize: 14, color: "var(--text-2)" }}>Log in to your Postora account</p>
           </div>
         </div>
 
-        {/* ── Google button ───────────────────────────────────────────────── */}
+        {/* Error banner */}
+        {error && (
+          <div style={{ padding: "12px 14px", background: "rgba(226,75,74,0.12)", border: "1px solid rgba(226,75,74,0.3)", borderRadius: 10, fontSize: 13, color: "#e24b4a", display: "flex", flexDirection: "column", gap: 8 }}>
+            <span>{error}</span>
+
+            {/* Resend verification option */}
+            {unverified && (
+              resendSent
+                ? <span style={{ color: "#00C98D", fontSize: 12 }}>✓ Verification email sent — check your inbox.</span>
+                : (
+                  <button
+                    onClick={handleResend}
+                    style={{ alignSelf: "flex-start", background: "none", border: "none", cursor: "pointer", color: "#ef9f27", fontSize: 12, fontWeight: 600, padding: 0, textDecoration: "underline" }}
+                  >
+                    Resend verification email
+                  </button>
+                )
+            )}
+          </div>
+        )}
+
+        {/* Google button */}
         <button
           onClick={handleGoogle}
           type="button"
+          disabled={googleLoading}
           style={{
-            width: "100%",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-            padding: "11px 20px",
-            background: "var(--surface-3)",
-            border: "1px solid var(--border-hover)",
-            borderRadius: 12,
-            fontSize: 14, fontWeight: 500,
-            color: "var(--text-1)",
-            cursor: "pointer",
+            width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+            padding: "11px 20px", background: "var(--surface-3)", border: "1px solid var(--border-hover)",
+            borderRadius: 12, fontSize: 14, fontWeight: 500, color: "var(--text-1)",
+            cursor: googleLoading ? "not-allowed" : "pointer", opacity: googleLoading ? 0.7 : 1,
             transition: "border-color 0.2s, background 0.2s",
           }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "var(--surface-4)";
-            (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.22)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "var(--surface-3)";
-            (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-hover)";
-          }}
+          onMouseEnter={(e) => { if (!googleLoading) { e.currentTarget.style.background = "var(--surface-4)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)"; } }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "var(--surface-3)"; e.currentTarget.style.borderColor = "var(--border-hover)"; }}
         >
-          <GoogleIcon />
-          Continue with Google
+          {googleLoading ? <Spinner /> : <GoogleIcon />}
+          {googleLoading ? "Connecting…" : "Continue with Google"}
         </button>
 
-        {/* ── Divider ─────────────────────────────────────────────────────── */}
+        {/* Divider */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ flex: 1, height: 1, background: "var(--border)" }}/>
+          <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
           <span style={{ fontSize: 12, color: "var(--text-3)", whiteSpace: "nowrap" }}>or continue with email</span>
-          <div style={{ flex: 1, height: 1, background: "var(--border)" }}/>
+          <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
         </div>
 
-        {/* ── Form ────────────────────────────────────────────────────────── */}
+        {/* Form */}
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
           {/* Email */}
           <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-            <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>
-              Email
-            </label>
+            <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>Email</label>
             <input
-              type="email"
-              required
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "11px 14px",
-                background: "var(--surface-3)",
-                border: "1px solid var(--border-hover)",
-                borderRadius: 10,
-                fontSize: 14,
-                color: "var(--text-1)",
-                outline: "none",
-                transition: "border-color 0.2s",
-              }}
+              type="email" required placeholder="you@example.com"
+              value={email} onChange={(e) => setEmail(e.target.value)}
+              style={{ width: "100%", padding: "11px 14px", background: "var(--surface-3)", border: "1px solid var(--border-hover)", borderRadius: 10, fontSize: 14, color: "var(--text-1)", outline: "none", transition: "border-color 0.2s" }}
               onFocus={(e) => (e.target.style.borderColor = "var(--green)")}
               onBlur={(e) => (e.target.style.borderColor = "var(--border-hover)")}
             />
@@ -141,94 +187,67 @@ export default function LoginPage() {
           {/* Password */}
           <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>
-                Password
-              </label>
-              <Link
-                href="/forgot-password"
-                style={{ fontSize: 12, color: "var(--green)", textDecoration: "none" }}
-              >
+              <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>Password</label>
+              <Link href="/forgot-password" style={{ fontSize: 12, color: "var(--green)", textDecoration: "none" }}>
                 Forgot password?
               </Link>
             </div>
             <div style={{ position: "relative" }}>
               <input
-                type={showPassword ? "text" : "password"}
-                required
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "11px 42px 11px 14px",
-                  background: "var(--surface-3)",
-                  border: "1px solid var(--border-hover)",
-                  borderRadius: 10,
-                  fontSize: 14,
-                  color: "var(--text-1)",
-                  outline: "none",
-                  transition: "border-color 0.2s",
-                }}
+                type={showPassword ? "text" : "password"} required placeholder="••••••••"
+                value={password} onChange={(e) => setPassword(e.target.value)}
+                style={{ width: "100%", padding: "11px 42px 11px 14px", background: "var(--surface-3)", border: "1px solid var(--border-hover)", borderRadius: 10, fontSize: 14, color: "var(--text-1)", outline: "none", transition: "border-color 0.2s" }}
                 onFocus={(e) => (e.target.style.borderColor = "var(--green)")}
                 onBlur={(e) => (e.target.style.borderColor = "var(--border-hover)")}
               />
-              {/* Show/hide toggle */}
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
-                  background: "none", border: "none", cursor: "pointer",
-                  color: "var(--text-3)", padding: 4, display: "flex",
-                }}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
+              <button type="button" onClick={() => setShowPassword(!showPassword)}
+                style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", padding: 4, display: "flex" }}
+                aria-label={showPassword ? "Hide password" : "Show password"}>
                 {showPassword ? <EyeOffIcon /> : <EyeIcon />}
               </button>
             </div>
           </div>
 
           {/* Submit */}
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              marginTop: 4,
-              width: "100%",
-              padding: "12px",
-              background: loading ? "var(--green-dim)" : "var(--green)",
-              border: "none",
-              borderRadius: 12,
-              fontSize: 14, fontWeight: 600,
-              color: "#0a0e14",
-              cursor: loading ? "not-allowed" : "pointer",
-              transition: "background 0.2s, opacity 0.2s",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              opacity: loading ? 0.8 : 1,
-            }}
-          >
-            {loading ? <Spinner /> : null}
+          <button type="submit" disabled={loading}
+            style={{ marginTop: 4, width: "100%", padding: "12px", background: "var(--green)", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, color: "#0a0e14", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.8 : 1, transition: "background 0.2s, opacity 0.2s", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            {loading && <Spinner />}
             {loading ? "Signing in…" : "Sign in"}
           </button>
         </form>
 
-        {/* ── Sign up link ─────────────────────────────────────────────────── */}
         <p style={{ textAlign: "center", fontSize: 13, color: "var(--text-3)" }}>
           Don&apos;t have an account?{" "}
-          <Link href="/signup" style={{ color: "var(--green)", textDecoration: "none", fontWeight: 500 }}>
-            Sign up free
-          </Link>
+          <Link href="/signup" style={{ color: "var(--green)", textDecoration: "none", fontWeight: 500 }}>Sign up free</Link>
         </p>
-
       </div>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// INLINE ICONS
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Firebase error parser ─────────────────────────────────────────────────────
+function parseFirebaseError(code: string): string {
+  switch (code) {
+    case "auth/invalid-credential":
+    case "auth/wrong-password":
+    case "auth/user-not-found":
+      return "Invalid email or password.";
+    case "auth/invalid-email":
+      return "Please enter a valid email address.";
+    case "auth/too-many-requests":
+      return "Too many attempts. Please try again later.";
+    case "auth/network-request-failed":
+      return "Network error. Check your connection and try again.";
+    case "auth/popup-blocked":
+      return "Popup was blocked. Please allow popups and try again.";
+    case "auth/user-disabled":
+      return "This account has been disabled. Contact support.";
+    default:
+      return "Something went wrong. Please try again.";
+  }
+}
 
+// ── Icons (unchanged) ─────────────────────────────────────────────────────────
 function GoogleIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -261,7 +280,8 @@ function EyeOffIcon() {
 
 function Spinner() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "spin 0.8s linear infinite" }}>
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+      style={{ animation: "spin 0.8s linear infinite", flexShrink: 0 }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
     </svg>

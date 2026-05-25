@@ -110,10 +110,7 @@ const UPCOMING = [
 export default function DashboardPage() {
   return (
     <>
-      <Topbar
-        title="Dashboard"
-        subtitle="Good morning, Jane 👋"
-      />
+      <Topbar showGreeting />
 
       <main style={{ padding: "28px", display: "flex", flexDirection: "column", gap: 28 }}>
 
