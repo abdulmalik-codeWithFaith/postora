@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Sora, Plus_Jakarta_Sans } from "next/font/google";
+import { AuthProvider } from "@/context/AuthContext";
 import "./globals.css";
 
 const sora = Sora({
@@ -18,8 +19,7 @@ const jakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: "Postora — AI Social Media Automation",
-  description:
-    "Upload your product media. AI writes captions, plans content, and publishes to Instagram, TikTok & Facebook automatically.",
+  description: "Upload your product media. AI writes captions, plans content, and publishes to Instagram, TikTok & Facebook automatically.",
   openGraph: {
     title: "Postora — AI Social Media Automation",
     description: "Upload once. Post everywhere. Always.",
@@ -27,15 +27,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${sora.variable} ${jakarta.variable}`}>
       <body className="bg-white text-gray-900 antialiased font-jakarta">
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
