@@ -677,7 +677,7 @@ function Footer() {
                   gap: 10,
                 }}
               >
-                {["Features", "Pricing", "How it Works"].map((item) => (
+                {["Features", "Pricing", "How-it-Works"].map((item) => (
                   <Link
                     key={item}
                     href={`#${item.toLowerCase()}`}
