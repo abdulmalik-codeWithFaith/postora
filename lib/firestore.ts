@@ -237,6 +237,81 @@ export async function createTicket(uid: string, data: {
   return ref.id;
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// CONNECTED ACCOUNTS
+// ═════════════════════════════════════════════════════════════════════════════
+
+export async function getConnectedAccounts(uid: string) {
+  const q    = query(collection(db, "connectedAccounts"), where("userId", "==", uid));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+}
+
+export async function saveConnectedAccount(uid: string, data: {
+  platform:       string;
+  handle:         string;
+  avatar:         string;
+  followers:      string;
+  postsPublished: number;
+  lastPost:       string;
+  state:          string;
+  accessToken?:   string;
+}): Promise<string> {
+  // Check if account for this platform already exists
+  const q    = query(collection(db, "connectedAccounts"), where("userId", "==", uid), where("platform", "==", data.platform));
+  const snap = await getDocs(q);
+
+  if (!snap.empty) {
+    // Update existing
+    const docId = snap.docs[0].id;
+    await updateDoc(doc(db, "connectedAccounts", docId), { ...data, updatedAt: serverTimestamp() });
+    // Also update platforms array on user doc
+    await updateDoc(doc(db, "users", uid), { platforms: data.state === "connected"
+      ? [...new Set([...(await getUser(uid))?.platforms ?? [], data.platform])]
+      : ((await getUser(uid))?.platforms ?? []).filter((p: string) => p !== data.platform)
+    });
+    return docId;
+  }
+
+  // Create new
+  const ref = await addDoc(collection(db, "connectedAccounts"), {
+    ...data,
+    userId:    uid,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  // Add to user platforms array
+  const user = await getUser(uid);
+  if (user && data.state === "connected") {
+    await updateDoc(doc(db, "users", uid), {
+      platforms: [...new Set([...(user.platforms ?? []), data.platform])],
+    });
+  }
+  return ref.id;
+}
+
+export async function disconnectAccount(uid: string, platform: string): Promise<void> {
+  const q    = query(collection(db, "connectedAccounts"), where("userId", "==", uid), where("platform", "==", platform));
+  const snap = await getDocs(q);
+  if (!snap.empty) {
+    await updateDoc(doc(db, "connectedAccounts", snap.docs[0].id), {
+      state:       "disconnected",
+      handle:      "",
+      avatar:      "",
+      followers:   "",
+      accessToken: "",
+      updatedAt:   serverTimestamp(),
+    });
+  }
+  // Remove from user platforms array
+  const user = await getUser(uid);
+  if (user) {
+    await updateDoc(doc(db, "users", uid), {
+      platforms: (user.platforms ?? []).filter((p: string) => p !== platform),
+    });
+  }
+}
+
 export async function getUserTickets(uid: string) {
   const q    = query(collection(db, "tickets"), where("userId", "==", uid), orderBy("createdAt", "desc"));
   const snap = await getDocs(q);
