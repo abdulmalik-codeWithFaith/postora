@@ -251,7 +251,7 @@ export async function saveConnectedAccount(uid: string, data: {
   platform:       string;
   handle:         string;
   avatar:         string;
-  followers:      string;
+  followers: number;
   postsPublished: number;
   lastPost:       string;
   state:          string;
