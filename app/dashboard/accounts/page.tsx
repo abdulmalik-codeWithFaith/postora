@@ -114,54 +114,44 @@ export default function AccountsPage() {
     }
   }, [user]);
 
-  useEffect(() => { loadAccounts(); }, [loadAccounts]);
+  useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const connected = params.get("connected");
+  const error     = params.get("error");
+
+  if (connected) {
+    // Clear the URL param and reload accounts
+    window.history.replaceState({}, "", "/dashboard/accounts");
+    loadAccounts();
+  }
+  if (error) {
+    window.history.replaceState({}, "", "/dashboard/accounts");
+    console.error("OAuth error:", error);
+    // Show an error toast here if you have one
+  }
+}, [loadAccounts]);
 
   const connectedCount = accounts.filter((a) => a.state === "connected").length;
 
   // ── Connect — initiates OAuth flow ────────────────────────────────────────
   async function connectAccount(platform: PlatformName) {
-    if (!user) return;
+  if (!user) return;
+  setAccounts((prev) => prev.map((a) =>
+    a.platform === platform ? { ...a, state: "connecting" } : a
+  ));
 
-    // Set connecting state locally
-    setAccounts((prev) => prev.map((a) => a.platform === platform ? { ...a, state: "connecting" } : a));
-    setActionLoading(platform);
+  // Map platform name to route
+  const routeMap: Partial<Record<PlatformName, string>> = {
+    "TikTok":      "tiktok",
+    "Twitter / X": "twitter",
+  };
 
-    try {
-      // ── OAuth redirect ──────────────────────────────────────────────────
-      // In production, redirect to your OAuth route:
-      // window.location.href = `/api/auth/${platform.toLowerCase().replace(" / ", "-")}?uid=${user.uid}`
-      //
-      // After OAuth completes, your callback route saves the token and calls:
-      // saveConnectedAccount(uid, { platform, handle, avatar, followers, ... state: "connected" })
-      //
-      // For now — simulate a successful connection:
-      await new Promise((r) => setTimeout(r, 2000));
+  const route = routeMap[platform];
+  if (!route) return; // Instagram/Facebook not built yet
 
-      const accountData = {
-        platform,
-        handle:         `@${profile?.name?.toLowerCase().replace(/\s/g, "") ?? "mybrand"}`,
-        avatar:         profile?.name?.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase() ?? "MB",
-        followers:      0,
-        postsPublished: 0,
-        lastPost:       "Never",
-        state:          "connected" as ConnectState,
-      };
-
-      // Save to Firestore
-      await saveConnectedAccount(user.uid, accountData);
-
-      // Update local state
-      setAccounts((prev) => prev.map((a) =>
-        a.platform === platform ? { ...a, ...accountData } : a
-      ));
-
-    } catch (err) {
-      console.error("Connect failed:", err);
-      setAccounts((prev) => prev.map((a) => a.platform === platform ? { ...a, state: "error" } : a));
-    } finally {
-      setActionLoading(null);
-    }
-  }
+  // Redirect to OAuth — page navigates away, callback handles the rest
+  window.location.href = `/api/auth/${route}?uid=${user.uid}`;
+}
 
   // ── Disconnect ────────────────────────────────────────────────────────────
   async function handleDisconnect(account: Account) {
