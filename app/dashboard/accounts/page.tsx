@@ -114,20 +114,24 @@ export default function AccountsPage() {
     }
   }, [user]);
 
-  useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
+  // Initial load — always runs on mount
+useEffect(() => { 
+  loadAccounts(); 
+}, [loadAccounts]);
+
+// Handle OAuth callback return
+useEffect(() => {
+  const params    = new URLSearchParams(window.location.search);
   const connected = params.get("connected");
   const error     = params.get("error");
 
   if (connected) {
-    // Clear the URL param and reload accounts
     window.history.replaceState({}, "", "/dashboard/accounts");
     loadAccounts();
   }
   if (error) {
     window.history.replaceState({}, "", "/dashboard/accounts");
     console.error("OAuth error:", error);
-    // Show an error toast here if you have one
   }
 }, [loadAccounts]);
 
