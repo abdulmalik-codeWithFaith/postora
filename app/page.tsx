@@ -107,7 +107,7 @@ function Hero() {
             <circle cx="5" cy="5" r="5" fill="var(--green)" opacity="0.7"/>
             <circle cx="5" cy="5" r="2.5" fill="var(--green)"/>
           </svg>
-          AI-Powered Social Automation
+          AI Autonomous Marketing Agent
         </div>
 
         {/* Headline */}
@@ -128,15 +128,14 @@ function Hero() {
               textShadow: "0 0 40px rgba(0,201,141,0.35)",
             }}
           >
-            Post everywhere.
+            Let AI run your marketing.
           </span>
-          <br />Always.
+          <br />Always on.
         </h1>
 
         {/* Subtext */}
-        <p style={{ fontSize: 18, color: "var(--text-2)", maxWidth: 520, lineHeight: 1.7 }}>
-          Postora turns your product photos &amp; videos into a fully automated
-          content engine — captions written, schedule set, posts published.
+        <p style={{ fontSize: 18, color: "var(--text-2)", maxWidth: 700, lineHeight: 1.7 }}>
+          Postora is an AI marketing agent that turns product photos and videos into a complete content system — strategy, captions, scheduling, and publishing across platforms automatically.
         </p>
 
         {/* CTAs */}
@@ -192,8 +191,7 @@ function Hero() {
               lineHeight: 1.6,
             }}
           >
-            ✨ "Step into the season. Made for those who move with purpose.
-            Shop link in bio 🔗{" "}
+            ✨ "✨ "AI generated a full marketing campaign from one product image — captions, hashtags, timing, and platform-ready content in seconds. #AIMarketing #Automation" 🔗{" "}
             <span style={{ color: "var(--green)" }}>#NewArrivals #ShoeLovers</span>"
           </div>
 
@@ -277,8 +275,8 @@ function LogoStrip() {
 function HowItWorks() {
   const steps = [
     { n: "01", title: "Upload your media",       body: "Drop in product photos and videos. Postora stores everything in your media library." },
-    { n: "02", title: "AI writes captions",       body: "Gemini AI crafts on-brand captions for each platform — tone matched, hashtags included." },
-    { n: "03", title: "Set schedule. Done.",      body: "Pick your posting times once. Postora publishes automatically, every day." },
+    { n: "02", title: "AI writes captions",       body: "AI builds a full marketing strategy and generates platform-specific content using Gemini AI." },
+    { n: "03", title: "Set schedule. Done.",      body: "Set it once. AI schedules, optimizes, and publishes content automatically every day." },
   ];
 
   return (
@@ -351,12 +349,12 @@ function HowItWorks() {
 const FEATURES = [
   {
     title: "AI Captions",
-    body: "Gemini AI generates captions per post, per platform — always on-brand.",
+    body: "AI generates platform-specific content with brand tone consistency and engagement optimization.",
     path: "M12 2l1.6 5H19l-4.1 3 1.5 5L12 12l-4.4 3 1.5-5L5 7h5.4z",
   },
   {
     title: "Auto Schedule",
-    body: "Plan a full month of content in minutes. Set it once, never touch it again.",
+    body: "AI schedules posts based on audience behavior and optimal engagement timing.",
     path: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
   },
   {
@@ -366,12 +364,12 @@ const FEATURES = [
   },
   {
     title: "Auto Publish",
-    body: "Posts go live on time, every time — no manual action needed.",
+    body: "Fully autonomous publishing system that executes content without manual intervention.",
     path: "M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z",
   },
   {
     title: "Analytics",
-    body: "See what's working across all platforms at a glance.",
+    body: "AI-driven insights that analyze performance and improve future content automatically.",
     path: "M18 20V10M12 20V4M6 20v-6",
   },
   {
@@ -430,10 +428,10 @@ function Features() {
 // ─────────────────────────────────────────────────────────────────────────────
 function Stats() {
   const stats = [
-    { value: "10×",  label: "Faster content" },
-    { value: "3",    label: "Platforms at once" },
-    { value: "0",    label: "Daily effort" },
-    { value: "100%", label: "Automated posting" },
+    { value: "10×",  label: "AI-driven content creation speed" },
+    { value: "3",    label: "Multi-platform AI distribution system" },
+    { value: "0",    label: "Zero manual content management" },
+    { value: "100%", label: "Fully autonomous marketing system" },
   ];
 
   return (
@@ -598,13 +596,13 @@ function Cta() {
           className="font-display font-extrabold"
           style={{ fontSize: "clamp(28px, 5vw, 52px)", color: "var(--text-1)", letterSpacing: "-0.03em", lineHeight: 1.1 }}
         >
-          Stop worrying about{" "}
+          Stop managing content .{" "}
           <span style={{ color: "var(--green)", textShadow: "0 0 30px rgba(0,201,141,0.3)" }}>
-            what to post.
+            manually
           </span>
         </h2>
-        <p style={{ fontSize: 17, color: "var(--text-2)", maxWidth: 440 }}>
-          Join businesses using Postora to stay active online — automatically.
+        <p style={{ fontSize: 17, color: "var(--text-2)", maxWidth: 500 }}>
+          Join businesses using AI to run their entire content marketing automatically.
         </p>
         <Link href="/signup" className="btn-primary" style={{ fontSize: 15, padding: "15px 36px" }}>
           Get started for free
@@ -647,8 +645,7 @@ function Footer() {
                 marginTop: "10px"
               }}
             >
-              AI-powered content automation platform helping businesses
-              stay active online without the stress of daily posting.
+              AI marketing automation system that generates, schedules, and publishes content autonomously across platforms.
             </p>
           </div>
 
