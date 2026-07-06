@@ -36,10 +36,10 @@ export default function SignupPage() {
           await sendWelcomeEmail(
             user.email!,
             user.displayName ?? "",
-            `${window.location.origin}/dashboard`
+            `${window.location.origin}/onboarding`
           );
         }
-        router.push("/dashboard");
+        router.push("/onboarding");
       })
       .catch((err) => {
         if (err.code !== "auth/cancelled-popup-request") {
@@ -73,7 +73,7 @@ export default function SignupPage() {
       const { user } = await createUserWithEmailAndPassword(auth, form.email, form.password);
       await updateProfile(user, { displayName: form.name });
       await sendEmailVerification(user, {
-        url: `${window.location.origin}/dashboard`,
+        url: `${window.location.origin}/onboarding`,
       });
       await sendWelcomeEmail(
         form.email,

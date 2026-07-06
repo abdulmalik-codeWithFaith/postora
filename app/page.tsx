@@ -7,10 +7,6 @@ import {
   FaTiktok,
 } from "react-icons/fa";
 
-// ─── Design system tokens (from globals.css) ──────────────────────────────
-// --green: #00C98D | --surface: #0f1117 | --surface-2: #161b25
-// Dark-first, AI product aesthetic — Sora display + Jakarta body
-
 export default function Page() {
   return (
     <div className="flex flex-col min-h-screen" style={{ background: "var(--surface)" }}>
@@ -191,8 +187,8 @@ function Hero() {
               lineHeight: 1.6,
             }}
           >
-            ✨ "✨ "AI generated a full marketing campaign from one product image — captions, hashtags, timing, and platform-ready content in seconds. #AIMarketing #Automation" 🔗{" "}
-            <span style={{ color: "var(--green)" }}>#NewArrivals #ShoeLovers</span>"
+            ✨ AI generated a full marketing campaign from one product image — captions, hashtags, timing, and platform-ready content in seconds. #AIMarketing #Automation 🔗{" "}
+            <span style={{ color: "var(--green)" }}>#NewArrivals #ShoeLovers</span>
           </div>
 
           {/* Platform pills */}
@@ -245,8 +241,10 @@ function LogoStrip() {
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
         {[
           { name: "Instagram", hex: "#E1306C" },
-          { name: "TikTok",    hex: "var(--text-1)" },
           { name: "Facebook",  hex: "#1877F2" },
+          { name: "LinkedIn",  hex: "#0A66C2" },
+          { name: "X",         hex: "var(--text-1)" },
+          { name: "TikTok",    hex: "var(--text-1)" },
         ].map((p) => (
           <div
             key={p.name}
@@ -274,9 +272,9 @@ function LogoStrip() {
 // ─────────────────────────────────────────────────────────────────────────────
 function HowItWorks() {
   const steps = [
-    { n: "01", title: "Upload your media",       body: "Drop in product photos and videos. Postora stores everything in your media library." },
-    { n: "02", title: "AI writes captions",       body: "AI builds a full marketing strategy and generates platform-specific content using Gemini AI." },
-    { n: "03", title: "Set schedule. Done.",      body: "Set it once. AI schedules, optimizes, and publishes content automatically every day." },
+    { n: "01", title: "Upload your media",       body: "Drop in product photos and videos for the month. Postora stores and analyzes everything in your media library." },
+    { n: "02", title: "Generate the campaign",    body: "Tell Postora your goal, posting frequency, and which accounts to publish to — AI builds captions, hashtags, and a full monthly calendar." },
+    { n: "03", title: "Review & auto-publish",    body: "Approve the calendar once, and Postora publishes every post automatically, on schedule, at the best times." },
   ];
 
   return (
@@ -349,32 +347,32 @@ function HowItWorks() {
 const FEATURES = [
   {
     title: "AI Captions",
-    body: "AI generates platform-specific content with brand tone consistency and engagement optimization.",
+    body: "AI generates platform-specific captions and hashtags with brand tone consistency and engagement optimization.",
     path: "M12 2l1.6 5H19l-4.1 3 1.5 5L12 12l-4.4 3 1.5-5L5 7h5.4z",
   },
   {
     title: "Auto Schedule",
-    body: "AI schedules posts based on audience behavior and optimal engagement timing.",
+    body: "AI builds your monthly posting schedule and picks the best times based on audience behavior.",
     path: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
   },
   {
     title: "Media Library",
-    body: "One organised home for all your product photos and videos.",
+    body: "One organised home for all your product photos and videos, analyzed automatically by AI.",
     path: "M3 3h18v18H3zM3 9h18M9 21V9",
   },
   {
     title: "Auto Publish",
-    body: "Fully autonomous publishing system that executes content without manual intervention.",
+    body: "Fully autonomous publishing system that executes your content calendar without manual intervention.",
     path: "M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z",
   },
   {
-    title: "Analytics",
-    body: "AI-driven insights that analyze performance and improve future content automatically.",
+    title: "Reports & Insights",
+    body: "Track reach, engagement, and failed posts, with AI recommendations to improve future campaigns.",
     path: "M18 20V10M12 20V4M6 20v-6",
   },
   {
     title: "Brand Tone",
-    body: "Define your voice once. Every caption respects it, forever.",
+    body: "Define your business name, logo, brand colors, and tone once. Every post respects it, forever.",
     path: "M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z",
   },
 ];
@@ -429,7 +427,7 @@ function Features() {
 function Stats() {
   const stats = [
     { value: "10×",  label: "AI-driven content creation speed" },
-    { value: "3",    label: "Multi-platform AI distribution system" },
+    { value: "5",    label: "Multi-platform AI distribution system" },
     { value: "0",    label: "Zero manual content management" },
     { value: "100%", label: "Fully autonomous marketing system" },
   ];
@@ -464,34 +462,56 @@ function Stats() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PRICING
+// PRICING — restructured to match Postora's plan spec
 // ─────────────────────────────────────────────────────────────────────────────
 const PLANS = [
   {
     name: "Starter",
-    price: "₦3,000",
-    period: "/mo",
-    desc: "For small businesses getting started online.",
-    features: ["1 platform", "10 AI-generated posts monthly", "Captions & hashtags", "Image uploads only", "Content scheduling", "Basic auto-posting"],
+    price: "Free",
+    period: "",
+    desc: "For businesses just getting started with AI marketing.",
+    features: [
+      "5 media uploads/month",
+      "AI captions",
+      "Monthly content calendar",
+      "Up to 10 scheduled posts",
+      "1 connected social account",
+      "Basic analytics",
+    ],
     cta: "Get started free",
     featured: false,
   },
   {
     name: "Pro",
-    price: "₦10,000",
+    price: "$9.99",
     period: "/mo",
-    desc: "For growing businesses that want consistent online presence.",
-    features: ["3 social platforms", "Unlimited image uploads", "Up to 10 video uploads monthly", "AI-generated captions", "Smart content planning", "Auto-posting"],
+    desc: "For growing businesses that want consistent, cross-platform presence.",
+    features: [
+      "50 media uploads/month",
+      "Image & video support",
+      "Up to 60 scheduled posts",
+      "Up to 5 connected social accounts",
+      "Advanced analytics",
+      "AI recommendations",
+    ],
     cta: "Start Pro",
     featured: true,
   },
   {
-    name: "Elite",
-    price: "₦25,000",
+    name: "Premium",
+    price: "$19.99",
     period: "/mo",
-    desc: "For businesses that want full content automation.",
-    features: ["4 social platforms", "Unlimited image uploads", "Unlimited video uploads",  "Advanced content strategy", "Full auto-posting automation", "Faster AI processing"],
-    cta: "Start ",
+    desc: "For businesses that want full campaign automation, graphics included.",
+    features: [
+      "Everything in Pro, plus:",
+      "Unlimited media uploads",
+      "Unlimited scheduled posts",
+      "AI-generated promotional graphics, posters & carousels",
+      "AI story graphics",
+      "Seasonal campaign graphics",
+      "Priority AI processing",
+    ],
+    cta: "Start Premium",
     featured: false,
   },
 ];
@@ -596,7 +616,7 @@ function Cta() {
           className="font-display font-extrabold"
           style={{ fontSize: "clamp(28px, 5vw, 52px)", color: "var(--text-1)", letterSpacing: "-0.03em", lineHeight: 1.1 }}
         >
-          Stop managing content .{" "}
+          Stop managing content{" "}
           <span style={{ color: "var(--green)", textShadow: "0 0 30px rgba(0,201,141,0.3)" }}>
             manually
           </span>
