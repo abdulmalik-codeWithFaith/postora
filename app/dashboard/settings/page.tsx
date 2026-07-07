@@ -1,10 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import {
+  onAuthStateChanged,
+  updateProfile as updateAuthProfile,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  updatePassword,
+  deleteUser,
+} from "firebase/auth";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 import Topbar from "@/components/dashboard/Topbar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Tab = "profile" | "brand" | "notifications" | "billing" | "security";
+
+type BusinessProfile = {
+  businessName?: string;
+  website?: string;
+  description?: string;
+  brandVoice?: {
+    tone?: string;
+    industry?: string;
+    keywords?: string;
+    avoid?: string;
+  };
+  captionPreferences?: {
+    emoji?: boolean;
+    hashtags?: boolean;
+    cta?: boolean;
+  };
+};
+
+type UserDoc = {
+  name?: string;
+  email?: string;
+  plan?: string;
+  notificationPrefs?: {
+    email?: Record<string, boolean>;
+    push?: Record<string, boolean>;
+  };
+};
 
 // ─── Tab config ───────────────────────────────────────────────────────────────
 const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
@@ -35,24 +73,84 @@ const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
   },
 ];
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
+// ─── Static plan catalog (unchanged — pricing display only, not billing logic) ─
 const PLANS = [
-  { name: "Starter", price: "₦3,000", period: "/mo", platforms: 1, posts: "10/mo",      features: ["1 platform", "10 posts/month", "AI captions"] },
-  { name: "Pro",     price: "₦10,000", period: "/mo", platforms: 3, posts: "30/mo",     features: ["3 platforms", "30 posts/month", "Smart scheduling", "Priority support"] },
-  { name: "Elite",   price: "₦25,000", period: "/mo", platforms: 4, posts: "Unlimited", features: ["4 platforms", "Unlimited posts", "AI graphics", "Premium templates"] },
+  { name: "Starter", price: "Free",   period: "",    features: ["1 connected account", "10 scheduled posts", "AI captions", "Basic analytics"] },
+  { name: "Pro",     price: "$9.99",  period: "/mo", features: ["5 connected accounts", "60 scheduled posts", "Image & video support", "Advanced analytics", "AI recommendations"] },
+  { name: "Premium", price: "$19.99", period: "/mo", features: ["Unlimited accounts & posts", "AI graphics, posters & carousels", "Priority AI processing"] },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PAGE
+// PAGE — auth gate + data fetch, then hands data down to tabs
 // ─────────────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("profile");
+
+  const [uid, setUid] = useState<string | null>(null);
+  const [profile, setProfile] = useState<BusinessProfile>({});
+  const [userDoc, setUserDoc] = useState<UserDoc>({});
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
+      setUid(user.uid);
+
+      try {
+        const [bpSnap, uSnap] = await Promise.all([
+          getDoc(doc(db, "businessProfiles", user.uid)),
+          getDoc(doc(db, "users", user.uid)),
+        ]);
+        setProfile(bpSnap.exists() ? (bpSnap.data() as BusinessProfile) : {});
+        setUserDoc(
+          uSnap.exists()
+            ? (uSnap.data() as UserDoc)
+            : { name: user.displayName ?? "", email: user.email ?? "" }
+        );
+      } catch (err) {
+        console.error(err);
+        setLoadError("Couldn't load your settings. Please refresh the page.");
+      } finally {
+        setLoading(false);
+      }
+    });
+    return () => unsub();
+  }, [router]);
+
+  // Called by tabs after a successful save, so the UI reflects the new values
+  // without needing a full refetch.
+  const patchProfile = useCallback((patch: Partial<BusinessProfile>) => {
+    setProfile((prev) => ({ ...prev, ...patch }));
+  }, []);
+  const patchUserDoc = useCallback((patch: Partial<UserDoc>) => {
+    setUserDoc((prev) => ({ ...prev, ...patch }));
+  }, []);
+
+  if (loading) {
+    return (
+      <>
+        <Topbar title="Settings" subtitle="Manage your account, brand, and preferences" />
+        <main style={{ padding: 28, color: "var(--text-2)", fontSize: 14 }}>Loading your settings…</main>
+      </>
+    );
+  }
 
   return (
     <>
       <Topbar title="Settings" subtitle="Manage your account, brand, and preferences" />
 
       <main style={{ padding: 28, display: "flex", gap: 24, alignItems: "flex-start" }}>
+
+        {loadError && (
+          <div style={{ position: "fixed", top: 90, right: 28, padding: "10px 16px", background: "rgba(226,75,74,0.12)", border: "1px solid rgba(226,75,74,0.3)", borderRadius: 10, fontSize: 13, color: "#e24b4a", zIndex: 20 }}>
+            {loadError}
+          </div>
+        )}
 
         {/* ── Sidebar tabs ─────────────────────────────────────────────────── */}
         <div
@@ -97,11 +195,17 @@ export default function SettingsPage() {
 
         {/* ── Tab content ──────────────────────────────────────────────────── */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          {activeTab === "profile"       && <ProfileTab />}
-          {activeTab === "brand"         && <BrandTab />}
-          {activeTab === "notifications" && <NotificationsTab />}
-          {activeTab === "billing"       && <BillingTab />}
-          {activeTab === "security"      && <SecurityTab />}
+          {activeTab === "profile" && uid && (
+            <ProfileTab uid={uid} profile={profile} userDoc={userDoc} onProfileSaved={patchProfile} onUserSaved={patchUserDoc} />
+          )}
+          {activeTab === "brand" && uid && (
+            <BrandTab uid={uid} profile={profile} onSaved={patchProfile} />
+          )}
+          {activeTab === "notifications" && uid && (
+            <NotificationsTab uid={uid} userDoc={userDoc} onSaved={patchUserDoc} />
+          )}
+          {activeTab === "billing" && <BillingTab currentPlan={userDoc.plan || "Starter"} />}
+          {activeTab === "security" && <SecurityTab />}
         </div>
 
       </main>
@@ -110,15 +214,69 @@ export default function SettingsPage() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TAB: PROFILE
+// TAB: PROFILE — writes to users/{uid} and businessProfiles/{uid}
 // ─────────────────────────────────────────────────────────────────────────────
-function ProfileTab() {
-  const [form, setForm] = useState({ name: "Jane Doe", email: "jane@example.com", business: "My Brand", website: "https://mybrand.com", bio: "We make quality fashion products for the modern woman." });
+function ProfileTab({
+  uid,
+  profile,
+  userDoc,
+  onProfileSaved,
+  onUserSaved,
+}: {
+  uid: string;
+  profile: BusinessProfile;
+  userDoc: UserDoc;
+  onProfileSaved: (p: Partial<BusinessProfile>) => void;
+  onUserSaved: (u: Partial<UserDoc>) => void;
+}) {
+  const [form, setForm] = useState({
+    name: userDoc.name || "",
+    email: userDoc.email || "",
+    business: profile.businessName || "",
+    website: profile.website || "",
+    bio: profile.description || "",
+  });
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
 
-  function save() {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+  async function save() {
+    setSaving(true);
+    setError("");
+    try {
+      // Keep Firebase Auth's displayName in sync
+      if (auth.currentUser && auth.currentUser.displayName !== form.name) {
+        await updateAuthProfile(auth.currentUser, { displayName: form.name });
+      }
+
+      await setDoc(
+        doc(db, "users", uid),
+        { name: form.name.trim(), email: form.email, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+
+      await setDoc(
+        doc(db, "businessProfiles", uid),
+        {
+          businessName: form.business.trim(),
+          website: form.website.trim(),
+          description: form.bio.trim(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      onUserSaved({ name: form.name, email: form.email });
+      onProfileSaved({ businessName: form.business, website: form.website, description: form.bio });
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      console.error(err);
+      setError("Couldn't save your changes. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -136,7 +294,7 @@ function ProfileTab() {
               fontFamily: "var(--font-sora), sans-serif",
             }}
           >
-            JD
+            {initials(form.name)}
           </div>
           <div>
             <button
@@ -157,8 +315,8 @@ function ProfileTab() {
           <Field label="Full name">
             <Input value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Your full name" />
           </Field>
-          <Field label="Email address">
-            <Input value={form.email} onChange={(v) => setForm({ ...form, email: v })} placeholder="you@example.com" type="email" />
+          <Field label="Email address" hint="Contact support to change your login email">
+            <Input value={form.email} onChange={() => {}} placeholder="you@example.com" type="email" disabled />
           </Field>
           <Field label="Business name">
             <Input value={form.business} onChange={(v) => setForm({ ...form, business: v })} placeholder="Your business name" />
@@ -186,26 +344,57 @@ function ProfileTab() {
           />
         </Field>
 
-        <SaveButton saved={saved} onSave={save} />
+        {error && <p style={{ fontSize: 12, color: "#e24b4a" }}>{error}</p>}
+        <SaveButton saved={saved} saving={saving} onSave={save} />
       </SectionCard>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TAB: BRAND & TONE
+// TAB: BRAND & TONE — writes to businessProfiles/{uid}.brandVoice / captionPreferences
 // ─────────────────────────────────────────────────────────────────────────────
-function BrandTab() {
-  const [tone, setTone]         = useState("fun");
-  const [industry, setIndustry] = useState("fashion");
-  const [keywords, setKeywords] = useState("affordable, stylish, quality, Nigerian fashion");
-  const [avoid, setAvoid]       = useState("slang, political topics");
-  const [emoji, setEmoji]       = useState(true);
-  const [hashtags, setHashtags] = useState(true);
-  const [cta, setCta]           = useState(true);
+function BrandTab({
+  uid,
+  profile,
+  onSaved,
+}: {
+  uid: string;
+  profile: BusinessProfile;
+  onSaved: (p: Partial<BusinessProfile>) => void;
+}) {
+  const [tone, setTone]         = useState(profile.brandVoice?.tone || "fun");
+  const [industry, setIndustry] = useState(profile.brandVoice?.industry || "fashion");
+  const [keywords, setKeywords] = useState(profile.brandVoice?.keywords || "");
+  const [avoid, setAvoid]       = useState(profile.brandVoice?.avoid || "");
+  const [emoji, setEmoji]       = useState(profile.captionPreferences?.emoji ?? true);
+  const [hashtags, setHashtags] = useState(profile.captionPreferences?.hashtags ?? true);
+  const [cta, setCta]           = useState(profile.captionPreferences?.cta ?? true);
+  const [saving, setSaving]     = useState(false);
   const [saved, setSaved]       = useState(false);
+  const [error, setError]       = useState("");
 
-  function save() { setSaved(true); setTimeout(() => setSaved(false), 2500); }
+  async function save() {
+    setSaving(true);
+    setError("");
+    const brandVoice = { tone, industry, keywords: keywords.trim(), avoid: avoid.trim() };
+    const captionPreferences = { emoji, hashtags, cta };
+    try {
+      await setDoc(
+        doc(db, "businessProfiles", uid),
+        { brandVoice, captionPreferences, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+      onSaved({ brandVoice, captionPreferences });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      console.error(err);
+      setError("Couldn't save your brand settings. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -245,7 +434,8 @@ function BrandTab() {
           <Input value={avoid} onChange={setAvoid} placeholder="e.g. competitor names, political topics" />
         </Field>
 
-        <SaveButton saved={saved} onSave={save} />
+        {error && <p style={{ fontSize: 12, color: "#e24b4a" }}>{error}</p>}
+        <SaveButton saved={saved} saving={saving} onSave={save} />
       </SectionCard>
 
       <SectionCard title="Caption Preferences" subtitle="Default settings for every AI-generated post">
@@ -260,40 +450,77 @@ function BrandTab() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TAB: NOTIFICATIONS
+// TAB: NOTIFICATIONS — writes to users/{uid}.notificationPrefs
 // ─────────────────────────────────────────────────────────────────────────────
-function NotificationsTab() {
-  const [email, setEmail]   = useState({ postPublished: true,  scheduleFailed: true,  weeklyReport: true,  newFeatures: false });
-  const [push, setPush]     = useState({ postPublished: true,  scheduleFailed: true,  weeklyReport: false, newFeatures: false });
+const NOTIF_ITEMS: { key: string; label: string; desc: string }[] = [
+  { key: "postPublished",  label: "Post published",  desc: "When a post goes live" },
+  { key: "scheduleFailed", label: "Schedule failed",  desc: "When a post fails to publish" },
+  { key: "weeklyReport",   label: "Weekly report",    desc: "Summary of your weekly performance" },
+  { key: "newFeatures",    label: "New features",     desc: "Product updates and announcements" },
+];
 
-  function toggleEmail(key: keyof typeof email) { setEmail((p) => ({ ...p, [key]: !p[key] })); }
-  function togglePush(key: keyof typeof push)   { setPush((p)  => ({ ...p, [key]: !p[key] })); }
+function NotificationsTab({
+  uid,
+  userDoc,
+  onSaved,
+}: {
+  uid: string;
+  userDoc: UserDoc;
+  onSaved: (u: Partial<UserDoc>) => void;
+}) {
+  const [email, setEmail] = useState<Record<string, boolean>>(
+    userDoc.notificationPrefs?.email || { postPublished: true, scheduleFailed: true, weeklyReport: true, newFeatures: false }
+  );
+  const [push, setPush] = useState<Record<string, boolean>>(
+    userDoc.notificationPrefs?.push || { postPublished: true, scheduleFailed: true, weeklyReport: false, newFeatures: false }
+  );
+  const [error, setError] = useState("");
 
-  const items: { key: keyof typeof email; label: string; desc: string }[] = [
-    { key: "postPublished",  label: "Post published",     desc: "When a post goes live" },
-    { key: "scheduleFailed", label: "Schedule failed",    desc: "When a post fails to publish" },
-    { key: "weeklyReport",   label: "Weekly report",      desc: "Summary of your weekly performance" },
-    { key: "newFeatures",    label: "New features",       desc: "Product updates and announcements" },
-  ];
+  async function persist(nextEmail: Record<string, boolean>, nextPush: Record<string, boolean>) {
+    try {
+      await setDoc(
+        doc(db, "users", uid),
+        { notificationPrefs: { email: nextEmail, push: nextPush }, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+      onSaved({ notificationPrefs: { email: nextEmail, push: nextPush } });
+    } catch (err) {
+      console.error(err);
+      setError("Couldn't save your notification preferences.");
+    }
+  }
+
+  function toggleEmail(key: string) {
+    const next = { ...email, [key]: !email[key] };
+    setEmail(next);
+    persist(next, push);
+  }
+  function togglePush(key: string) {
+    const next = { ...push, [key]: !push[key] };
+    setPush(next);
+    persist(email, next);
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {error && <p style={{ fontSize: 12, color: "#e24b4a" }}>{error}</p>}
+
       <SectionCard title="Email Notifications" subtitle="Choose what emails you receive from Postora">
         <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-          {items.map((item, i) => (
+          {NOTIF_ITEMS.map((item, i) => (
             <div
               key={item.key}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
                 padding: "14px 0",
-                borderBottom: i < items.length - 1 ? "1px solid var(--border)" : "none",
+                borderBottom: i < NOTIF_ITEMS.length - 1 ? "1px solid var(--border)" : "none",
               }}
             >
               <div>
                 <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-1)" }}>{item.label}</p>
                 <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{item.desc}</p>
               </div>
-              <ToggleSwitch value={email[item.key]} onChange={() => toggleEmail(item.key)} />
+              <ToggleSwitch value={!!email[item.key]} onChange={() => toggleEmail(item.key)} />
             </div>
           ))}
         </div>
@@ -301,20 +528,20 @@ function NotificationsTab() {
 
       <SectionCard title="Push Notifications" subtitle="Browser and mobile push alerts">
         <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-          {items.map((item, i) => (
+          {NOTIF_ITEMS.map((item, i) => (
             <div
               key={item.key}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
                 padding: "14px 0",
-                borderBottom: i < items.length - 1 ? "1px solid var(--border)" : "none",
+                borderBottom: i < NOTIF_ITEMS.length - 1 ? "1px solid var(--border)" : "none",
               }}
             >
               <div>
                 <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-1)" }}>{item.label}</p>
                 <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{item.desc}</p>
               </div>
-              <ToggleSwitch value={push[item.key]} onChange={() => togglePush(item.key)} />
+              <ToggleSwitch value={!!push[item.key]} onChange={() => togglePush(item.key)} />
             </div>
           ))}
         </div>
@@ -325,15 +552,25 @@ function NotificationsTab() {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TAB: BILLING
+// NOTE: actual charging/upgrade requires a payment provider (Stripe, Paystack,
+// etc.) with server-side webhooks — that's outside what a client SDK can do
+// safely. This reads the user's current plan from Firestore (users/{uid}.plan,
+// which your payment webhook should be the one to update) and displays it.
+// The "Upgrade"/"Downgrade" buttons are wired to call your own checkout
+// endpoint — replace the TODO with your actual route once you have one.
 // ─────────────────────────────────────────────────────────────────────────────
-function BillingTab() {
-  const currentPlan = "Pro";
+function BillingTab({ currentPlan }: { currentPlan: string }) {
   const [confirmCancel, setConfirmCancel] = useState(false);
+
+  async function handlePlanChange(planName: string) {
+    // TODO: replace with a call to your checkout/billing API, e.g.:
+    // await fetch("/api/billing/checkout", { method: "POST", body: JSON.stringify({ plan: planName }) });
+    console.log("Requested plan change to:", planName);
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-      {/* Current plan */}
       <SectionCard title="Current Plan" subtitle="Your active subscription">
         <div
           style={{
@@ -355,50 +592,21 @@ function BillingTab() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
             </div>
             <div>
-              <p style={{ fontFamily: "var(--font-sora), sans-serif", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Pro Plan</p>
-              <p style={{ fontSize: 12, color: "var(--text-2)", marginTop: 2 }}>₦10,000 / month · Renews June 23, 2026</p>
+              <p style={{ fontFamily: "var(--font-sora), sans-serif", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>{currentPlan} Plan</p>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <span
-              style={{
-                fontSize: 11, fontWeight: 700, padding: "4px 10px",
-                borderRadius: 999, background: "rgba(0,201,141,0.15)",
-                color: "var(--green)", border: "1px solid rgba(0,201,141,0.25)",
-              }}
-            >
-              Active
-            </span>
-          </div>
-        </div>
-
-        {/* Usage */}
-        <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: 12 }}>
-          {[
-            { label: "Posts used",       used: 8,  total: 30,   unit: "posts" },
-            { label: "Platforms",        used: 2,  total: 3,    unit: "platforms" },
-            { label: "AI generations",   used: 23, total: 100,  unit: "captions" },
-          ].map((u) => (
-            <div
-              key={u.label}
-              style={{
-                background: "var(--surface-3)", border: "1px solid var(--border)",
-                borderRadius: 12, padding: "14px 16px",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                <span style={{ fontSize: 12, color: "var(--text-3)" }}>{u.label}</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>{u.used} / {u.total}</span>
-              </div>
-              <div style={{ height: 4, background: "var(--surface-4)", borderRadius: 2, overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${(u.used / u.total) * 100}%`, background: "var(--green)", borderRadius: 2 }} />
-              </div>
-            </div>
-          ))}
+          <span
+            style={{
+              fontSize: 11, fontWeight: 700, padding: "4px 10px",
+              borderRadius: 999, background: "rgba(0,201,141,0.15)",
+              color: "var(--green)", border: "1px solid rgba(0,201,141,0.25)",
+            }}
+          >
+            Active
+          </span>
         </div>
       </SectionCard>
 
-      {/* Plan cards */}
       <SectionCard title="Change Plan" subtitle="Upgrade or downgrade at any time">
         <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: 12 }}>
           {PLANS.map((plan) => {
@@ -434,6 +642,7 @@ function BillingTab() {
                 </ul>
                 <button
                   disabled={isCurrent}
+                  onClick={() => handlePlanChange(plan.name)}
                   style={{
                     padding: "9px", borderRadius: 9,
                     background: isCurrent ? "transparent" : "var(--green)",
@@ -442,7 +651,7 @@ function BillingTab() {
                     border: isCurrent ? "1px solid var(--border)" : "none",
                   } as React.CSSProperties}
                 >
-                  {isCurrent ? "Current plan" : plan.name === "Starter" ? "Downgrade" : "Upgrade"}
+                  {isCurrent ? "Current plan" : "Choose plan"}
                 </button>
               </div>
             );
@@ -450,44 +659,6 @@ function BillingTab() {
         </div>
       </SectionCard>
 
-      {/* Billing history */}
-      <SectionCard title="Billing History" subtitle="Your recent payments">
-        {[
-          { date: "May 23, 2026",   amount: "₦10,000", status: "Paid",   plan: "Pro" },
-          { date: "Apr 23, 2026",   amount: "₦10,000", status: "Paid",   plan: "Pro" },
-          { date: "Mar 23, 2026",   amount: "₦3,000",  status: "Paid",   plan: "Starter" },
-        ].map((invoice, i) => (
-          <div
-            key={i}
-            style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "12px 0",
-              borderBottom: i < 2 ? "1px solid var(--border)" : "none",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 9, background: "var(--surface-3)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              </div>
-              <div>
-                <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-1)" }}>{invoice.plan} Plan</p>
-                <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>{invoice.date}</p>
-              </div>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{invoice.amount}</span>
-              <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 999, background: "rgba(0,201,141,0.1)", color: "var(--green)" }}>
-                {invoice.status}
-              </span>
-              <button style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "var(--green)", textDecoration: "none" }}>
-                Download
-              </button>
-            </div>
-          </div>
-        ))}
-      </SectionCard>
-
-      {/* Cancel */}
       <SectionCard title="Cancel Subscription" subtitle="This will downgrade you to the free tier at the end of your billing period">
         {!confirmCancel ? (
           <button
@@ -510,7 +681,7 @@ function BillingTab() {
             }}
           >
             <p style={{ fontSize: 13, color: "var(--text-1)" }}>
-              Are you sure? You'll lose access to Pro features on <strong>June 23, 2026</strong>.
+              Are you sure you want to cancel? You&apos;ll keep access until the end of your current billing period.
             </p>
             <div style={{ display: "flex", gap: 10 }}>
               <button
@@ -520,7 +691,7 @@ function BillingTab() {
                 Keep subscription
               </button>
               <button
-                onClick={() => setConfirmCancel(false)}
+                onClick={() => { handlePlanChange("Starter"); setConfirmCancel(false); }}
                 style={{ padding: "9px 18px", background: "#e24b4a", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 600, color: "#fff", cursor: "pointer" }}
               >
                 Yes, cancel
@@ -534,23 +705,90 @@ function BillingTab() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TAB: SECURITY
+// TAB: SECURITY — real Firebase Auth password change + account deletion
 // ─────────────────────────────────────────────────────────────────────────────
 function SecurityTab() {
-  const [currentPw, setCurrentPw]   = useState("");
-  const [newPw, setNewPw]           = useState("");
-  const [confirmPw, setConfirmPw]   = useState("");
-  const [showPw, setShowPw]         = useState(false);
-  const [twofa, setTwofa]           = useState(false);
-  const [saved, setSaved]           = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw]         = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [showPw, setShowPw]       = useState(false);
+  const [saving, setSaving]       = useState(false);
+  const [saved, setSaved]         = useState(false);
+  const [error, setError]         = useState("");
 
-  function save() {
-    if (!currentPw || !newPw || newPw !== confirmPw) return;
-    setSaved(true);
-    setTimeout(() => { setSaved(false); setCurrentPw(""); setNewPw(""); setConfirmPw(""); }, 2500);
-  }
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deletePw, setDeletePw]           = useState("");
+  const [deleteError, setDeleteError]     = useState("");
+  const [deleting, setDeleting]           = useState(false);
 
   const mismatch = confirmPw.length > 0 && newPw !== confirmPw;
+
+  async function save() {
+    setError("");
+    if (!currentPw || !newPw || newPw !== confirmPw) return;
+    if (newPw.length < 8) {
+      setError("New password must be at least 8 characters.");
+      return;
+    }
+
+    const user = auth.currentUser;
+    if (!user || !user.email) {
+      setError("You're not signed in. Please log in again.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // Firebase requires a recent login before allowing a password change
+      const credential = EmailAuthProvider.credential(user.email, currentPw);
+      await reauthenticateWithCredential(user, credential);
+      await updatePassword(user, newPw);
+
+      setSaved(true);
+      setCurrentPw("");
+      setNewPw("");
+      setConfirmPw("");
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err: any) {
+      if (err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
+        setError("Current password is incorrect.");
+      } else if (err.code === "auth/too-many-requests") {
+        setError("Too many attempts. Please try again later.");
+      } else {
+        console.error(err);
+        setError("Couldn't update your password. Please try again.");
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    setDeleteError("");
+    const user = auth.currentUser;
+    if (!user || !user.email) return;
+
+    setDeleting(true);
+    try {
+      const credential = EmailAuthProvider.credential(user.email, deletePw);
+      await reauthenticateWithCredential(user, credential);
+      await deleteUser(user);
+      // Note: this only deletes the Auth record. Deleting the user's Firestore
+      // documents (users/{uid}, businessProfiles/{uid}, posts, media, etc.)
+      // should be done server-side (e.g. a Cloud Function triggered on user
+      // deletion), since the client loses write access the moment auth is gone.
+      window.location.href = "/";
+    } catch (err: any) {
+      if (err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
+        setDeleteError("Incorrect password.");
+      } else {
+        console.error(err);
+        setDeleteError("Couldn't delete your account. Please try again.");
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -564,77 +802,60 @@ function SecurityTab() {
         <Field label="Confirm new password" error={mismatch ? "Passwords don't match" : undefined}>
           <PasswordInput value={confirmPw} onChange={setConfirmPw} show={showPw} onToggle={() => setShowPw(!showPw)} placeholder="Repeat new password" error={mismatch} />
         </Field>
-        <SaveButton saved={saved} onSave={save} label="Update password" />
+        {error && <p style={{ fontSize: 12, color: "#e24b4a" }}>{error}</p>}
+        <SaveButton saved={saved} saving={saving} onSave={save} label="Update password" />
       </SectionCard>
 
+      {/* Note: Firebase client SDK doesn't expose 2FA enrollment/session listing
+          out of the box — those need Firebase's multi-factor auth APIs and/or
+          your own session tracking. Left as UI-only until that's wired up. */}
       <SectionCard title="Two-Factor Authentication" subtitle="Add an extra layer of security to your account">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-          <div>
-            <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-1)", marginBottom: 3 }}>Authenticator app</p>
-            <p style={{ fontSize: 12, color: "var(--text-3)" }}>
-              {twofa ? "2FA is enabled. Your account is more secure." : "Protect your account with an authenticator app."}
-            </p>
-          </div>
-          <ToggleSwitch value={twofa} onChange={() => setTwofa(!twofa)} />
-        </div>
+        <p style={{ fontSize: 12, color: "var(--text-3)" }}>
+          2FA setup is coming soon — this requires Firebase&apos;s multi-factor auth enrollment flow.
+        </p>
       </SectionCard>
 
-      <SectionCard title="Active Sessions" subtitle="Devices currently logged into your account">
-        {[
-          { device: "Chrome on macOS",  location: "Lagos, Nigeria",   current: true,  time: "Now" },
-          { device: "iPhone 14",        location: "Lagos, Nigeria",   current: false, time: "2 hours ago" },
-          { device: "Firefox on Windows", location: "Abuja, Nigeria", current: false, time: "3 days ago" },
-        ].map((s, i) => (
-          <div
-            key={i}
-            style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "12px 0",
-              borderBottom: i < 2 ? "1px solid var(--border)" : "none",
-              flexWrap: "wrap", gap: 10,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 9, background: "var(--surface-3)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="2" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-              </div>
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-1)" }}>{s.device}</p>
-                  {s.current && (
-                    <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 999, background: "var(--green-muted)", color: "var(--green)" }}>THIS DEVICE</span>
-                  )}
-                </div>
-                <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>{s.location} · {s.time}</p>
-              </div>
-            </div>
-            {!s.current && (
-              <button style={{ padding: "6px 14px", background: "rgba(226,75,74,0.08)", border: "1px solid rgba(226,75,74,0.15)", borderRadius: 8, fontSize: 12, fontWeight: 500, color: "#e24b4a", cursor: "pointer" }}>
-                Revoke
-              </button>
-            )}
-          </div>
-        ))}
-      </SectionCard>
-
-      {/* Danger zone */}
       <SectionCard title="Danger Zone" subtitle="Irreversible actions — proceed with caution">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-          <div>
-            <p style={{ fontSize: 13, fontWeight: 500, color: "#e24b4a", marginBottom: 3 }}>Delete account</p>
-            <p style={{ fontSize: 12, color: "var(--text-3)" }}>Permanently delete your account and all data. This cannot be undone.</p>
+        {!deleteConfirm ? (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 500, color: "#e24b4a", marginBottom: 3 }}>Delete account</p>
+              <p style={{ fontSize: 12, color: "var(--text-3)" }}>Permanently delete your account and all data. This cannot be undone.</p>
+            </div>
+            <button
+              onClick={() => setDeleteConfirm(true)}
+              style={{
+                padding: "9px 18px",
+                background: "rgba(226,75,74,0.08)", border: "1px solid rgba(226,75,74,0.2)",
+                borderRadius: 10, fontSize: 13, fontWeight: 500,
+                color: "#e24b4a", cursor: "pointer", flexShrink: 0,
+              }}
+            >
+              Delete account
+            </button>
           </div>
-          <button
-            style={{
-              padding: "9px 18px",
-              background: "rgba(226,75,74,0.08)", border: "1px solid rgba(226,75,74,0.2)",
-              borderRadius: 10, fontSize: 13, fontWeight: 500,
-              color: "#e24b4a", cursor: "pointer", flexShrink: 0,
-            }}
-          >
-            Delete account
-          </button>
-        </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <p style={{ fontSize: 13, color: "var(--text-1)" }}>Confirm your password to permanently delete your account.</p>
+            <PasswordInput value={deletePw} onChange={setDeletePw} show={showPw} onToggle={() => setShowPw(!showPw)} placeholder="Your password" />
+            {deleteError && <p style={{ fontSize: 12, color: "#e24b4a" }}>{deleteError}</p>}
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => { setDeleteConfirm(false); setDeletePw(""); setDeleteError(""); }}
+                style={{ padding: "9px 18px", background: "var(--surface-3)", border: "1px solid var(--border)", borderRadius: 9, fontSize: 13, color: "var(--text-2)", cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting || !deletePw}
+                style={{ padding: "9px 18px", background: "#e24b4a", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 600, color: "#fff", cursor: deleting || !deletePw ? "not-allowed" : "pointer", opacity: deleting || !deletePw ? 0.6 : 1 }}
+              >
+                {deleting ? "Deleting…" : "Permanently delete"}
+              </button>
+            </div>
+          </div>
+        )}
       </SectionCard>
     </div>
   );
@@ -643,6 +864,12 @@ function SecurityTab() {
 // ─────────────────────────────────────────────────────────────────────────────
 // SHARED COMPONENTS
 // ─────────────────────────────────────────────────────────────────────────────
+function initials(name: string): string {
+  if (!name.trim()) return "?";
+  const parts = name.trim().split(/\s+/);
+  return (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase();
+}
+
 function SectionCard({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
     <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
@@ -668,16 +895,24 @@ function Field({ label, hint, error, children }: { label: string; hint?: string;
   );
 }
 
-function Input({ value, onChange, placeholder, type = "text" }: { value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {
+function Input({ value, onChange, placeholder, type = "text", disabled = false }: { value: string; onChange: (v: string) => void; placeholder?: string; type?: string; disabled?: boolean }) {
   return (
     <input
       type={type}
       value={value}
+      disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      style={{ width: "100%", padding: "11px 14px", background: "var(--surface-3)", border: "1px solid var(--border-hover)", borderRadius: 10, fontSize: 13, color: "var(--text-1)", outline: "none", transition: "border-color 0.2s", fontFamily: "inherit" }}
-      onFocus={(e) => (e.target.style.borderColor = "var(--green)")}
-      onBlur={(e) => (e.target.style.borderColor = "var(--border-hover)")}
+      style={{
+        width: "100%", padding: "11px 14px",
+        background: disabled ? "var(--surface-4)" : "var(--surface-3)",
+        border: "1px solid var(--border-hover)", borderRadius: 10, fontSize: 13,
+        color: disabled ? "var(--text-3)" : "var(--text-1)", outline: "none",
+        transition: "border-color 0.2s", fontFamily: "inherit",
+        cursor: disabled ? "not-allowed" : "text",
+      }}
+      onFocus={(e) => { if (!disabled) e.target.style.borderColor = "var(--green)"; }}
+      onBlur={(e) => { if (!disabled) e.target.style.borderColor = "var(--border-hover)"; }}
     />
   );
 }
@@ -741,21 +976,22 @@ function ToggleSwitch({ value, onChange }: { value: boolean; onChange: () => voi
   );
 }
 
-function SaveButton({ saved, onSave, label = "Save changes" }: { saved: boolean; onSave: () => void; label?: string }) {
+function SaveButton({ saved, saving, onSave, label = "Save changes" }: { saved: boolean; saving: boolean; onSave: () => void; label?: string }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 4 }}>
       <button
         onClick={onSave}
+        disabled={saving}
         style={{
           padding: "10px 24px",
           background: "var(--green)", border: "none", borderRadius: 10,
           fontSize: 13, fontWeight: 600, color: "#0a0e14",
-          cursor: "pointer", display: "flex", alignItems: "center", gap: 7,
-          transition: "opacity 0.2s",
+          cursor: saving ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 7,
+          transition: "opacity 0.2s", opacity: saving ? 0.7 : 1,
         }}
       >
         {saved && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
-        {saved ? "Saved!" : label}
+        {saving ? "Saving…" : saved ? "Saved!" : label}
       </button>
     </div>
   );

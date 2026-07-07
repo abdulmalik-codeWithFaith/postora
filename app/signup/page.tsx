@@ -2,14 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   createUserWithEmailAndPassword,
   updateProfile,
   sendEmailVerification,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
+  getAdditionalUserInfo,
 } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
 
@@ -24,30 +24,7 @@ export default function SignupPage() {
 
   const passwordStrength = getPasswordStrength(form.password);
 
-  // ── Catch Google redirect result on page load ──────────────────────────────
-  useEffect(() => {
-    setGoogleLoading(true);
-    getRedirectResult(auth)
-      .then(async (result) => {
-        if (!result) return; // normal page load, no redirect result
-        const user = result.user;
-        const isNew = (result as any)._tokenResponse?.isNewUser;
-        if (isNew) {
-          await sendWelcomeEmail(
-            user.email!,
-            user.displayName ?? "",
-            `${window.location.origin}/onboarding`
-          );
-        }
-        router.push("/onboarding");
-      })
-      .catch((err) => {
-        if (err.code !== "auth/cancelled-popup-request") {
-          setError(parseFirebaseError(err.code));
-        }
-      })
-      .finally(() => setGoogleLoading(false));
-  }, [router]);
+  // getRedirectResult useEffect is no longer needed — popup resolves inline.
 
   function set(field: string) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -88,18 +65,33 @@ export default function SignupPage() {
     }
   }
 
-  // ── Google sign-up via redirect ───────────────────────────────────────────
+  // ── Google sign-up via popup ───────────────────────────────────────────────
   async function handleGoogle() {
     setError("");
     setGoogleLoading(true);
     try {
-      await signInWithRedirect(auth, googleProvider);
-      // Page navigates away to Google — result is caught in useEffect above on return
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      const isNew = getAdditionalUserInfo(result)?.isNewUser;
+
+      if (isNew) {
+        await sendWelcomeEmail(
+          user.email!,
+          user.displayName ?? "",
+          `${window.location.origin}/onboarding`
+        );
+      }
+      router.push("/onboarding");
     } catch (err: any) {
-      setError(parseFirebaseError(err.code));
+      if (err.code !== "auth/cancelled-popup-request" && err.code !== "auth/popup-closed-by-user") {
+        setError(parseFirebaseError(err.code));
+      }
+    } finally {
       setGoogleLoading(false);
     }
   }
+
+  // ...rest of the component (JSX, helpers) stays exactly the same
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--surface)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 16px" }}>
