@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 
 // ─── Nav structure (unchanged) ────────────────────────────────────────────────
 const NAV_MAIN = [
@@ -68,17 +69,28 @@ export default function Sidebar() {
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [plan, setPlan] = useState<string>("Starter"); // default until Firestore responds
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Listen to auth state
+  // Listen to auth state, then pull the user's current plan from Firestore
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
       if (!u) {
         router.replace("/login"); // redirect if not logged in
-      } else {
-        setUser(u);
+        return;
+      }
+      setUser(u);
+
+      try {
+        const snap = await getDoc(doc(db, "users", u.uid));
+        if (snap.exists() && snap.data()?.plan) {
+          setPlan(snap.data()?.plan);
+        }
+      } catch (err) {
+        console.error("Couldn't load plan:", err);
+        // keep default "Starter" — non-fatal, sidebar still renders
       }
     });
     return () => unsub();
@@ -105,6 +117,7 @@ export default function Sidebar() {
   const displayName = user?.displayName || user?.email?.split("@")[0] || "User";
   const email = user?.email ?? "";
   const photoURL = user?.photoURL ?? null;
+  const isFreeTier = plan === "Starter";
 
   return (
     <>
@@ -130,15 +143,17 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {/* Plan badge */}
+        {/* Plan badge — now reflects users/{uid}.plan from Firestore */}
         {!collapsed && (
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "var(--green-muted)", border: "1px solid rgba(0,201,141,0.15)", borderRadius: 10 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                 <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)", boxShadow: "0 0 6px var(--green)" }} />
-                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--green)" }}>Pro Plan</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--green)" }}>{plan} Plan</span>
               </div>
-              <Link href="/dashboard/settings?tab=billing" style={{ fontSize: 11, color: "var(--text-3)", textDecoration: "none" }}>Upgrade</Link>
+              {isFreeTier && (
+                <Link href="/dashboard/settings?tab=billing" style={{ fontSize: 11, color: "var(--text-3)", textDecoration: "none" }}>Upgrade</Link>
+              )}
             </div>
           </div>
         )}
