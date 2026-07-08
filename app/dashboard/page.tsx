@@ -29,6 +29,10 @@ export default function DashboardPage() {
   const [fetching,  setFetching]  = useState(true);
 
   // ── Redirect if not authenticated ────────────────────────────────────────
+  // Note: /dashboard/layout.tsx already wraps this route in <AuthGuard>, which
+  // redirects unauthenticated users to /login. This effect is a second,
+  // redundant redirect path — kept for now since removing it safely requires
+  // confirming AuthGuard's exact loading/redirect timing first.
   useEffect(() => {
     if (!loading && !user) router.push("/login");
   }, [loading, user, router]);
@@ -124,6 +128,17 @@ export default function DashboardPage() {
     },
   ];
 
+  // ── Quick actions — matches the real 6-page nav ─────────────────────────
+  // "Schedule a post" and "Generate captions" used to point at standalone
+  // /dashboard/schedule and /dashboard/captions pages that were removed from
+  // the nav; both concerns now live inside the Calendar campaign flow.
+  const QUICK_ACTIONS = [
+    { href: "/dashboard/media",    emoji: "📤", label: "Upload media",       desc: "Add photos or videos" },
+    { href: "/dashboard/calendar", emoji: "✨", label: "Create campaign",    desc: "Generate this month's posts" },
+    { href: "/dashboard/accounts", emoji: "🔗", label: "Connected accounts", desc: "Manage social platforms" },
+    { href: "/dashboard/reports",  emoji: "📊", label: "View reports",      desc: "See performance to date" },
+  ];
+
   return (
     <>
       <Topbar
@@ -169,14 +184,14 @@ export default function DashboardPage() {
           <div style={{ gridColumn: "span 2", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
             <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <h2 style={{ fontFamily: "var(--font-sora), sans-serif", fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>Recent posts</h2>
-              <Link href="/dashboard/schedule" style={{ fontSize: 12, color: "var(--green)", textDecoration: "none" }}>View all →</Link>
+              <Link href="/dashboard/calendar" style={{ fontSize: 12, color: "var(--green)", textDecoration: "none" }}>View all →</Link>
             </div>
 
             {posts.length === 0 ? (
               <div style={{ padding: "48px 20px", textAlign: "center" }}>
                 <p style={{ fontSize: 28, marginBottom: 8 }}>📭</p>
                 <p style={{ fontSize: 14, color: "var(--text-2)" }}>No posts yet</p>
-                <Link href="/dashboard/schedule" style={{ fontSize: 13, color: "var(--green)", textDecoration: "none", display: "block", marginTop: 8 }}>
+                <Link href="/dashboard/calendar" style={{ fontSize: 13, color: "var(--green)", textDecoration: "none", display: "block", marginTop: 8 }}>
                   Create your first post →
                 </Link>
               </div>
@@ -234,7 +249,7 @@ export default function DashboardPage() {
                 <div style={{ textAlign: "center", padding: "24px 0" }}>
                   <p style={{ fontSize: 22, marginBottom: 8 }}>📅</p>
                   <p style={{ fontSize: 13, color: "var(--text-3)" }}>No scheduled posts</p>
-                  <Link href="/dashboard/schedule" style={{ fontSize: 12, color: "var(--green)", textDecoration: "none", display: "block", marginTop: 6 }}>
+                  <Link href="/dashboard/calendar" style={{ fontSize: 12, color: "var(--green)", textDecoration: "none", display: "block", marginTop: 6 }}>
                     + Schedule a post
                   </Link>
                 </div>
@@ -259,12 +274,7 @@ export default function DashboardPage() {
 
         {/* ── Quick actions ─────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 md:grid-cols-4" style={{ gap: 12 }}>
-          {[
-            { href: "/dashboard/media",    emoji: "📤", label: "Upload media",      desc: "Add photos or videos" },
-            { href: "/dashboard/captions", emoji: "✨", label: "Generate captions", desc: "Let AI write posts" },
-            { href: "/dashboard/schedule", emoji: "🗓️", label: "Schedule a post",   desc: "Pick time & platform" },
-            { href: "/dashboard/calendar", emoji: "📅", label: "View calendar",     desc: "See your content plan" },
-          ].map((a) => (
+          {QUICK_ACTIONS.map((a) => (
             <Link
               key={a.href}
               href={a.href}

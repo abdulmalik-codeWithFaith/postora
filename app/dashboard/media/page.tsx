@@ -6,10 +6,13 @@ import { useAuth } from "@/context/AuthContext";
 import { getUserMedia, addMediaRecord, deleteMediaRecord } from "@/lib/firestore";
 import { uploadToCloudinary, deleteFromCloudinary, formatBytes } from "@/lib/coudinary";
 import { MediaItem as FirestoreMediaItem } from "@/types";
+import CampaignWizardModal from "@/components/dashboard/Campaignwizardmodal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type FilterType = "all" | "image" | "video";
 type SortBy     = "newest" | "oldest" | "name";
+
+type UploadError = { fileName: string; message: string };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PAGE
@@ -25,8 +28,11 @@ export default function MediaPage() {
   const [preview,         setPreview]         = useState<FirestoreMediaItem | null>(null);
   const [uploadProgress,  setUploadProgress]  = useState<number | null>(null);
   const [uploadingName,   setUploadingName]   = useState("");
+  const [uploadErrors,    setUploadErrors]    = useState<UploadError[]>([]);
   const [loading,         setLoading]         = useState(true);
   const [deleting,        setDeleting]        = useState<string | null>(null);
+  const [deleteError,     setDeleteError]     = useState<string | null>(null);
+  const [showWizard,      setShowWizard]      = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Load media from Firestore ─────────────────────────────────────────────
@@ -67,6 +73,8 @@ export default function MediaPage() {
   async function handleUpload(files: FileList | null) {
     if (!files || files.length === 0 || !user) return;
 
+    setUploadErrors([]);
+
     for (const file of Array.from(files)) {
       setUploadingName(file.name);
       setUploadProgress(0);
@@ -103,6 +111,12 @@ export default function MediaPage() {
 
       } catch (err) {
         console.error("Upload failed:", err);
+        // Surface the failure instead of letting the progress bar just vanish —
+        // the user needs to know this specific file didn't make it in.
+        setUploadErrors((prev) => [
+          ...prev,
+          { fileName: file.name, message: "Upload failed. Check the file and try again." },
+        ]);
       }
     }
 
@@ -112,16 +126,30 @@ export default function MediaPage() {
 
   // ── Delete single ─────────────────────────────────────────────────────────
   async function deleteItem(item: FirestoreMediaItem) {
+    setDeleteError(null);
+    setDeleting(item.id);
+
+    // Delete from Cloudinary and Firestore as two separate steps so a failure
+    // partway through leaves a clear, recoverable state instead of an orphaned
+    // Firestore record silently pointing at media that no longer exists.
     try {
-      setDeleting(item.id);
-      // Delete from Cloudinary via API route
       await deleteFromCloudinary(item.cloudinaryPublicId);
-      // Delete from Firestore
+    } catch (err) {
+      console.error("Cloudinary delete failed:", err);
+      setDeleteError(`Couldn't delete "${item.name}" from storage. Nothing was removed — try again.`);
+      setDeleting(null);
+      return;
+    }
+
+    try {
       await deleteMediaRecord(item.id);
       setMedia((prev) => prev.filter((m) => m.id !== item.id));
       setPreview(null);
     } catch (err) {
-      console.error("Delete failed:", err);
+      console.error("Firestore delete failed:", err);
+      // The file is already gone from Cloudinary at this point — flag it
+      // clearly rather than pretending the delete fully succeeded.
+      setDeleteError(`"${item.name}" was removed from storage, but its library entry couldn't be deleted. It may still show up here — try deleting it again.`);
     } finally {
       setDeleting(null);
     }
@@ -151,6 +179,42 @@ export default function MediaPage() {
       />
 
       <main style={{ padding: 28, display: "flex", flexDirection: "column", gap: 24 }}>
+
+        {/* ── Create Monthly Campaign CTA ──────────────────────────────────── */}
+        <div
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
+            padding: "18px 22px",
+            background: "linear-gradient(135deg, rgba(0,201,141,0.10) 0%, rgba(0,201,141,0.03) 100%)",
+            border: "1px solid rgba(0,201,141,0.25)", borderRadius: 16,
+          }}
+        >
+          <div>
+            <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)", fontFamily: "var(--font-sora), sans-serif", marginBottom: 3 }}>
+              Ready to plan this month?
+            </p>
+            <p style={{ fontSize: 12, color: "var(--text-3)" }}>
+              {media.length === 0
+                ? "Upload some media first, then let AI build your full month of posts."
+                : "AI will pick the right image for each day and write captions + hashtags for the whole month."}
+            </p>
+          </div>
+          <button
+            onClick={() => setShowWizard(true)}
+            disabled={media.length === 0}
+            title={media.length === 0 ? "Upload media first" : undefined}
+            style={{
+              flexShrink: 0, padding: "11px 20px",
+              background: media.length === 0 ? "var(--surface-4)" : "var(--green)",
+              border: "none", borderRadius: 11, fontSize: 13, fontWeight: 700,
+              color: media.length === 0 ? "var(--text-3)" : "#0a0e14",
+              cursor: media.length === 0 ? "not-allowed" : "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Create Monthly Campaign ✨
+          </button>
+        </div>
 
         {/* ── Upload zone ──────────────────────────────────────────────────── */}
         <div
@@ -200,6 +264,38 @@ export default function MediaPage() {
             </>
           )}
         </div>
+
+        {/* ── Upload errors ────────────────────────────────────────────────── */}
+        {uploadErrors.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {uploadErrors.map((e, i) => (
+              <div key={`${e.fileName}-${i}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 14px", background: "rgba(226,75,74,0.08)", border: "1px solid rgba(226,75,74,0.2)", borderRadius: 10 }}>
+                <span style={{ fontSize: 13, color: "#e24b4a" }}>
+                  <strong>{e.fileName}</strong> — {e.message}
+                </span>
+                <button
+                  onClick={() => setUploadErrors((prev) => prev.filter((_, idx) => idx !== i))}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "#e24b4a", padding: 2, display: "flex", flexShrink: 0 }}
+                >
+                  <CloseIcon />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Delete error banner ──────────────────────────────────────────── */}
+        {deleteError && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 14px", background: "rgba(226,75,74,0.08)", border: "1px solid rgba(226,75,74,0.2)", borderRadius: 10 }}>
+            <span style={{ fontSize: 13, color: "#e24b4a" }}>{deleteError}</span>
+            <button
+              onClick={() => setDeleteError(null)}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "#e24b4a", padding: 2, display: "flex", flexShrink: 0 }}
+            >
+              <CloseIcon />
+            </button>
+          </div>
+        )}
 
         {/* ── Stats strip ──────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 md:grid-cols-4" style={{ gap: 12 }}>
@@ -305,6 +401,13 @@ export default function MediaPage() {
           onDelete={() => deleteItem(preview)}
         />
       )}
+
+      {/* ── Campaign wizard: goal → frequency → accounts → seasonal → generate ── */}
+      <CampaignWizardModal
+        isOpen={showWizard}
+        onClose={() => setShowWizard(false)}
+        media={media}
+      />
     </>
   );
 }
@@ -354,6 +457,7 @@ function MediaCard({
             src={item.cloudinaryUrl}
             style={{ width: "100%", height: "100%", objectFit: "cover" }}
             muted
+            preload="metadata"
           />
         ) : (
           <span style={{ fontSize: 40 }}>📷</span>
@@ -455,7 +559,7 @@ function PreviewModal({
               { label: "Type",     value: item.type.charAt(0).toUpperCase() + item.type.slice(1) },
               { label: "Size",     value: item.size },
               { label: "Uploaded", value: new Date(item.createdAt).toLocaleDateString("en-NG", { month: "short", day: "numeric", year: "numeric" }) },
-              { label: "Status",   value: item.usedInPost ? "Used in post" : "Not used yet" },
+              { label: "Status",   value: item.usedInPost ? "Used in campaign" : "Not used yet" },
             ].map((m) => (
               <div key={m.label} style={{ background: "var(--surface-3)", borderRadius: 10, padding: "10px 14px" }}>
                 <p style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 500, marginBottom: 3 }}>{m.label}</p>
@@ -466,10 +570,16 @@ function PreviewModal({
 
           {/* Actions */}
           <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+            {/* "Use in post" is disabled rather than a dead button — the
+                Calendar/campaign flow that would actually consume this media
+                doesn't exist yet. This clearly communicates "not yet" instead
+                of silently doing nothing when clicked. */}
             <button
-              style={{ flex: 1, padding: "11px", background: "var(--green)", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 600, color: "#0a0e14", cursor: "pointer" }}
+              disabled
+              title="Coming soon — available once the Calendar campaign flow ships"
+              style={{ flex: 1, padding: "11px", background: "var(--surface-4)", border: "1px solid var(--border)", borderRadius: 10, fontSize: 13, fontWeight: 600, color: "var(--text-3)", cursor: "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
             >
-              Use in post
+              Use in campaign <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 999, background: "var(--surface-3)", color: "var(--text-3)" }}>Soon</span>
             </button>
             <button
               onClick={onDelete}

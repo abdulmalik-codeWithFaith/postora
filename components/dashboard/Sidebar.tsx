@@ -7,7 +7,9 @@ import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 
-// ─── Nav structure (unchanged) ────────────────────────────────────────────────
+// ─── Nav structure — matches the 6-page product spec ─────────────────────────
+// Dashboard, Media Library, Calendar, Connected Accounts, Reports, Settings.
+// (Settings lives in NAV_BOTTOM below, alongside Help & Support.)
 const NAV_MAIN = [
   {
     label: "Dashboard", href: "/dashboard",
@@ -18,24 +20,16 @@ const NAV_MAIN = [
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,
   },
   {
-    label: "AI Captions", href: "/dashboard/captions", badge: "AI",
-    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l1.6 5H19l-4.1 3 1.5 5L12 12l-4.4 3 1.5-5L5 7h5.4z"/></svg>,
-  },
-  {
-    label: "Content Calendar", href: "/dashboard/calendar",
+    label: "Calendar", href: "/dashboard/calendar",
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
-  },
-  {
-    label: "Schedule & Publish", href: "/dashboard/schedule",
-    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-  },
-  {
-    label: "Analytics", href: "/dashboard/analytics",
-    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
   },
   {
     label: "Connected Accounts", href: "/dashboard/accounts",
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
+  },
+  {
+    label: "Reports", href: "/dashboard/reports",
+    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
   },
 ];
 
@@ -50,7 +44,10 @@ const NAV_BOTTOM = [
   },
 ];
 
-const MOBILE_NAV_ITEMS = [NAV_MAIN[0], NAV_MAIN[1], NAV_MAIN[2], NAV_MAIN[4], NAV_MAIN[5]];
+// Mobile bottom bar mirrors NAV_MAIN directly now that it's exactly 5 items —
+// no more hardcoded index picks (NAV_MAIN[0,1,2,4,5]), which would break
+// silently as soon as the array shape changed.
+const MOBILE_NAV_ITEMS = NAV_MAIN;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function getInitials(name: string | null, email: string | null): string {
@@ -143,7 +140,7 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {/* Plan badge — now reflects users/{uid}.plan from Firestore */}
+        {/* Plan badge — reflects users/{uid}.plan from Firestore */}
         {!collapsed && (
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "var(--green-muted)", border: "1px solid rgba(0,201,141,0.15)", borderRadius: 10 }}>
@@ -249,7 +246,6 @@ export default function Sidebar() {
             <Link key={item.href} href={item.href} className={`postora-bottom-bar__item${active ? " postora-bottom-bar__item--active" : ""}`}>
               <span className="postora-bottom-bar__icon">{item.icon}</span>
               <span className="postora-bottom-bar__label">{item.label}</span>
-              {item.badge && <span className="postora-bottom-bar__badge">{item.badge}</span>}
             </Link>
           );
         })}
@@ -267,7 +263,6 @@ export default function Sidebar() {
           .postora-bottom-bar__item--active::before { content: ""; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 24px; height: 2px; border-radius: 0 0 2px 2px; background: var(--green); }
           .postora-bottom-bar__icon { display: flex; align-items: center; justify-content: center; color: inherit; }
           .postora-bottom-bar__label { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60px; text-align: center; }
-          .postora-bottom-bar__badge { position: absolute; top: 6px; right: calc(50% - 16px); font-size: 8px; font-weight: 700; padding: 1px 4px; border-radius: 999px; background: var(--green-muted); color: var(--green); border: 1px solid rgba(0,201,141,0.2); letter-spacing: 0.04em; line-height: 1.4; }
         }
       `}</style>
     </>
