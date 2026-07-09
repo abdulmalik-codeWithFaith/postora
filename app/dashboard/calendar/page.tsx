@@ -2,14 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Topbar from "@/components/dashboard/Topbar";
-import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { getUserPosts, updatePost, deletePost } from "@/lib/firestore";
 import { Post } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Platform = "Instagram" | "TikTok" | "Facebook";
-type Status   = "published" | "scheduled" | "draft" | "failed";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const PLATFORM_COLORS: Record<string, string> = {
@@ -43,6 +41,8 @@ export default function CalendarPage() {
   const [selectedPost,   setSelectedPost]   = useState<Post | null>(null);
   const [selectedDay,    setSelectedDay]    = useState<string | null>(null);
   const [deleting,       setDeleting]       = useState(false);
+  const [saving,         setSaving]         = useState(false);
+  const [saveError,      setSaveError]      = useState<string | null>(null);
 
   // ── Load posts from Firestore ─────────────────────────────────────────────
   const loadPosts = useCallback(async () => {
@@ -139,20 +139,28 @@ export default function CalendarPage() {
     }
   }
 
-  // ── Update post status ────────────────────────────────────────────────────
-  async function handleStatusChange(post: Post, status: string) {
+  // ── Generic post update (status, caption, time — anything editable) ──────
+  // Replaces the old handleStatusChange: both the status dropdown and the new
+  // inline caption/time editor route through this same save path.
+  async function handleUpdate(post: Post, updates: Partial<Post>) {
+    setSaveError(null);
+    setSaving(true);
     try {
-      await updatePost(post.id, { status: status as Post["status"] });
-      setPosts((prev) => prev.map((p) => p.id === post.id ? { ...p, status: status as Post["status"] } : p));
-      setSelectedPost((prev) => prev ? { ...prev, status: status as Post["status"] } : null);
+      await updatePost(post.id, updates);
+      const merged = { ...post, ...updates };
+      setPosts((prev) => prev.map((p) => (p.id === post.id ? merged : p)));
+      setSelectedPost(merged);
     } catch (err) {
-      console.error("Status update failed:", err);
+      console.error("Update failed:", err);
+      setSaveError("Couldn't save your changes. Please try again.");
+    } finally {
+      setSaving(false);
     }
   }
 
   return (
     <>
-      <Topbar title="Content Calendar" subtitle={`${MONTHS[month]} ${year}`} />
+      <Topbar title="Calendar" subtitle={`${MONTHS[month]} ${year}`} />
 
       <main style={{ padding: 28, display: "flex", flexDirection: "column", gap: 24 }}>
 
@@ -207,9 +215,12 @@ export default function CalendarPage() {
                 ))}
               </div>
 
-              <Link href="/dashboard/schedule" style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 9, background: "var(--green)", fontSize: 12, fontWeight: 600, color: "#0a0e14", textDecoration: "none" }}>
-                <PlusIcon /> New post
-              </Link>
+              {/* Post creation happens via the AI campaign flow in Media
+                  Library, not a standalone "new post" page — that page was
+                  removed from the nav. Pointing here instead. */}
+              <a href="/dashboard/media" style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 9, background: "var(--green)", fontSize: 12, fontWeight: 600, color: "#0a0e14", textDecoration: "none" }}>
+                <PlusIcon /> New campaign
+              </a>
             </div>
 
             {/* Day headers */}
@@ -286,7 +297,7 @@ export default function CalendarPage() {
           {/* ── Right panel (1/4) ─────────────────────────────────────────── */}
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-            {/* Day detail */}
+            {/* Day detail — shows the selected day's posts, click any to edit */}
             <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
               <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
                 <p style={{ fontFamily: "var(--font-sora), sans-serif", fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>
@@ -308,7 +319,7 @@ export default function CalendarPage() {
                   <div style={{ padding: "24px 16px", textAlign: "center" }}>
                     <p style={{ fontSize: 22, marginBottom: 6 }}>📭</p>
                     <p style={{ fontSize: 12, color: "var(--text-3)" }}>Nothing scheduled</p>
-                    <Link href="/dashboard/schedule" style={{ fontSize: 12, color: "var(--green)", textDecoration: "none", display: "block", marginTop: 8 }}>+ Add a post</Link>
+                    <a href="/dashboard/media" style={{ fontSize: 12, color: "var(--green)", textDecoration: "none", display: "block", marginTop: 8 }}>+ Generate a campaign</a>
                   </div>
                 ) : (
                   dayPosts.map((post, i) => (
@@ -358,14 +369,16 @@ export default function CalendarPage() {
         </div>
       </main>
 
-      {/* ── Post detail modal ──────────────────────────────────────────────── */}
+      {/* ── Post detail / edit modal ──────────────────────────────────────── */}
       {selectedPost && (
         <PostModal
           post={selectedPost}
           deleting={deleting}
-          onClose={() => setSelectedPost(null)}
+          saving={saving}
+          saveError={saveError}
+          onClose={() => { setSelectedPost(null); setSaveError(null); }}
           onDelete={() => handleDelete(selectedPost)}
-          onStatusChange={(status) => handleStatusChange(selectedPost, status)}
+          onSave={(updates) => handleUpdate(selectedPost, updates)}
         />
       )}
     </>
@@ -373,18 +386,48 @@ export default function CalendarPage() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST MODAL
+// POST MODAL — view + inline edit (caption/hashtags, time, status)
 // ─────────────────────────────────────────────────────────────────────────────
-function PostModal({ post, deleting, onClose, onDelete, onStatusChange }: {
+function PostModal({
+  post, deleting, saving, saveError, onClose, onDelete, onSave,
+}: {
   post: Post;
   deleting: boolean;
+  saving: boolean;
+  saveError: string | null;
   onClose: () => void;
   onDelete: () => void;
-  onStatusChange: (status: string) => void;
+  onSave: (updates: Partial<Post>) => void;
 }) {
+  const [editing, setEditing]     = useState(false);
+  const [captionDraft, setCaptionDraft] = useState(post.caption ?? "");
+  const [timeDraft, setTimeDraft] = useState("");
+
   const scheduledDate = post.scheduledAt ?? post.publishedAt ?? post.createdAt;
   const dateStr = scheduledDate ? new Date(scheduledDate).toLocaleDateString("en-NG", { month: "short", day: "numeric", year: "numeric" }) : "—";
   const timeStr = scheduledDate ? new Date(scheduledDate).toTimeString().slice(0, 5) : "—";
+
+  function startEditing() {
+    setCaptionDraft(post.caption ?? "");
+    setTimeDraft(scheduledDate ? new Date(scheduledDate).toTimeString().slice(0, 5) : "09:00");
+    setEditing(true);
+  }
+
+  function handleSave() {
+    const updates: Partial<Post> = { caption: captionDraft };
+
+    // Re-apply the edited time onto the existing scheduled date, so editing
+    // time doesn't lose the day the post was assigned to.
+    if (scheduledDate) {
+      const base = new Date(scheduledDate);
+      const [hh, mm] = timeDraft.split(":").map(Number);
+      base.setHours(hh, mm, 0, 0);
+      updates.scheduledAt = base.toISOString();
+    }
+
+    onSave(updates);
+    setEditing(false);
+  }
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, backdropFilter: "blur(4px)" }}>
@@ -412,33 +455,65 @@ function PostModal({ post, deleting, onClose, onDelete, onStatusChange }: {
         {/* Body */}
         <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
 
-          {/* Caption */}
-          <div style={{ background: "var(--surface-3)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px", fontSize: 14, color: "var(--text-1)", lineHeight: 1.7 }}>
-            {post.caption}
-          </div>
+          {saveError && (
+            <div style={{ padding: "10px 14px", background: "rgba(226,75,74,0.08)", border: "1px solid rgba(226,75,74,0.2)", borderRadius: 10, fontSize: 12, color: "#e24b4a" }}>
+              {saveError}
+            </div>
+          )}
 
-          {/* Meta grid */}
-          <div className="grid grid-cols-2" style={{ gap: 10 }}>
-            {[
-              { label: "Platform", value: post.platforms.join(", ") },
-              { label: "Date",     value: dateStr                   },
-              { label: "Time",     value: timeStr                   },
-              { label: "Reach",    value: post.reach ? post.reach.toLocaleString() : "—" },
-            ].map((m) => (
-              <div key={m.label} style={{ background: "var(--surface-3)", borderRadius: 10, padding: "10px 14px" }}>
-                <p style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>{m.label}</p>
-                <p style={{ fontSize: 13, color: "var(--text-1)", fontWeight: 500 }}>{m.value}</p>
-              </div>
-            ))}
-          </div>
+          {/* Caption — read view or edit view */}
+          {editing ? (
+            <textarea
+              value={captionDraft}
+              onChange={(e) => setCaptionDraft(e.target.value)}
+              rows={5}
+              placeholder="Caption and hashtags…"
+              style={{ background: "var(--surface-3)", border: "1px solid var(--border-hover)", borderRadius: 12, padding: "14px 16px", fontSize: 14, color: "var(--text-1)", lineHeight: 1.7, outline: "none", resize: "vertical", fontFamily: "inherit" }}
+            />
+          ) : (
+            <div style={{ background: "var(--surface-3)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px", fontSize: 14, color: "var(--text-1)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+              {post.caption}
+            </div>
+          )}
+
+          {/* Time editor (only while editing) */}
+          {editing && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 12, color: "var(--text-3)" }}>Post time</span>
+              <input
+                type="time"
+                value={timeDraft}
+                onChange={(e) => setTimeDraft(e.target.value)}
+                style={{ padding: "6px 12px", background: "var(--surface-3)", border: "1px solid var(--border-hover)", borderRadius: 9, fontSize: 12, color: "var(--text-1)", outline: "none", colorScheme: "dark" }}
+              />
+            </div>
+          )}
+
+          {/* Meta grid (read view only) */}
+          {!editing && (
+            <div className="grid grid-cols-2" style={{ gap: 10 }}>
+              {[
+                { label: "Platform", value: post.platforms.join(", ") },
+                { label: "Date",     value: dateStr                   },
+                { label: "Time",     value: timeStr                   },
+                { label: "Reach",    value: post.reach ? post.reach.toLocaleString() : "—" },
+              ].map((m) => (
+                <div key={m.label} style={{ background: "var(--surface-3)", borderRadius: 10, padding: "10px 14px" }}>
+                  <p style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>{m.label}</p>
+                  <p style={{ fontSize: 13, color: "var(--text-1)", fontWeight: 500 }}>{m.value}</p>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Status selector */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span style={{ fontSize: 12, color: "var(--text-3)" }}>Status</span>
             <select
               value={post.status}
-              onChange={(e) => onStatusChange(e.target.value)}
-              style={{ padding: "6px 12px", background: "var(--surface-3)", border: "1px solid var(--border-hover)", borderRadius: 9, fontSize: 12, color: "var(--text-1)", outline: "none", colorScheme: "dark", cursor: "pointer" }}
+              onChange={(e) => onSave({ status: e.target.value as Post["status"] })}
+              disabled={editing}
+              style={{ padding: "6px 12px", background: "var(--surface-3)", border: "1px solid var(--border-hover)", borderRadius: 9, fontSize: 12, color: "var(--text-1)", outline: "none", colorScheme: "dark", cursor: editing ? "not-allowed" : "pointer", opacity: editing ? 0.5 : 1 }}
             >
               <option value="draft">Draft</option>
               <option value="scheduled">Scheduled</option>
@@ -448,16 +523,40 @@ function PostModal({ post, deleting, onClose, onDelete, onStatusChange }: {
 
           {/* Actions */}
           <div style={{ display: "flex", gap: 10 }}>
-            <Link href="/dashboard/schedule" style={{ flex: 1, textAlign: "center", padding: "11px", background: "var(--green)", borderRadius: 10, fontSize: 13, fontWeight: 600, color: "#0a0e14", textDecoration: "none" }}>
-              Edit post
-            </Link>
-            <button
-              onClick={onDelete}
-              disabled={deleting}
-              style={{ padding: "11px 16px", background: "rgba(226,75,74,0.1)", border: "1px solid rgba(226,75,74,0.2)", borderRadius: 10, fontSize: 13, fontWeight: 500, color: "#e24b4a", cursor: deleting ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6, opacity: deleting ? 0.6 : 1 }}
-            >
-              {deleting ? <Spinner /> : <TrashIcon />} Delete
-            </button>
+            {editing ? (
+              <>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  style={{ flex: 1, padding: "11px", background: "var(--green)", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 600, color: "#0a0e14", cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}
+                >
+                  {saving ? "Saving…" : "Save changes"}
+                </button>
+                <button
+                  onClick={() => setEditing(false)}
+                  disabled={saving}
+                  style={{ padding: "11px 16px", background: "var(--surface-3)", border: "1px solid var(--border)", borderRadius: 10, fontSize: 13, color: "var(--text-2)", cursor: "pointer" }}
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={startEditing}
+                  style={{ flex: 1, padding: "11px", background: "var(--green)", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 600, color: "#0a0e14", cursor: "pointer" }}
+                >
+                  Edit post
+                </button>
+                <button
+                  onClick={onDelete}
+                  disabled={deleting}
+                  style={{ padding: "11px 16px", background: "rgba(226,75,74,0.1)", border: "1px solid rgba(226,75,74,0.2)", borderRadius: 10, fontSize: 13, fontWeight: 500, color: "#e24b4a", cursor: deleting ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6, opacity: deleting ? 0.6 : 1 }}
+                >
+                  {deleting ? <Spinner /> : <TrashIcon />} Delete
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -179,7 +179,7 @@ export default function CampaignWizardModal({
 
     try {
       const campaignRef = await addDoc(collection(db, "campaigns"), {
-        uid: user.uid,
+        userId: user.uid,
         goal,
         frequency,
         accountIds: usingTestAccount ? [] : selectedAccountIds,
