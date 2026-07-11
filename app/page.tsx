@@ -103,7 +103,7 @@ function Hero() {
             <circle cx="5" cy="5" r="5" fill="var(--green)" opacity="0.7"/>
             <circle cx="5" cy="5" r="2.5" fill="var(--green)"/>
           </svg>
-          AI Autonomous Marketing Agent
+          AI Marketing Agent
         </div>
 
         {/* Headline */}
@@ -124,14 +124,13 @@ function Hero() {
               textShadow: "0 0 40px rgba(0,201,141,0.35)",
             }}
           >
-            Let AI run your marketing.
+            Get a month of content.
           </span>
-          <br />Always on.
         </h1>
 
         {/* Subtext */}
         <p style={{ fontSize: 18, color: "var(--text-2)", maxWidth: 700, lineHeight: 1.7 }}>
-          Postora is an AI marketing agent that turns product photos and videos into a complete content system — strategy, captions, scheduling, and publishing across platforms automatically.
+          Postora turns your product photos and videos into a full month of captions, hashtags, and a ready-to-approve posting calendar — built by AI, reviewed by you, published on schedule.
         </p>
 
         {/* CTAs */}
@@ -187,8 +186,8 @@ function Hero() {
               lineHeight: 1.6,
             }}
           >
-            ✨ AI generated a full marketing campaign from one product image — captions, hashtags, timing, and platform-ready content in seconds. #AIMarketing #Automation 🔗{" "}
-            <span style={{ color: "var(--green)" }}>#NewArrivals #ShoeLovers</span>
+            ✨ New arrivals just dropped. Comfort meets style in every step. #NewArrivals #ShoeLovers{" "}
+            <span style={{ color: "var(--green)" }}>#ComfortFirst</span>
           </div>
 
           {/* Platform pills */}
@@ -222,6 +221,10 @@ function Hero() {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LOGO STRIP — "Posts directly to"
+// Trimmed to the 3 platforms actually supported in the product today
+// (Instagram, TikTok, Facebook — see PLATFORM_COLORS in Dashboard/Calendar/
+// Reports). LinkedIn and X were listed here before but aren't built anywhere
+// else — flagged in chat; add them back once they're real.
 // ─────────────────────────────────────────────────────────────────────────────
 function LogoStrip() {
   return (
@@ -242,8 +245,6 @@ function LogoStrip() {
         {[
           { name: "Instagram", hex: "#E1306C" },
           { name: "Facebook",  hex: "#1877F2" },
-          { name: "LinkedIn",  hex: "#0A66C2" },
-          { name: "X",         hex: "var(--text-1)" },
           { name: "TikTok",    hex: "var(--text-1)" },
         ].map((p) => (
           <div
@@ -269,12 +270,15 @@ function LogoStrip() {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HOW IT WORKS
+// Rewritten to match the actual monthly workflow: upload → set goal/frequency/
+// accounts (+ optional seasonal campaign on Premium) → AI builds the calendar
+// → review & edit → approve once, then it publishes on schedule.
 // ─────────────────────────────────────────────────────────────────────────────
 function HowItWorks() {
   const steps = [
-    { n: "01", title: "Upload your media",       body: "Drop in product photos and videos for the month. Postora stores and analyzes everything in your media library." },
-    { n: "02", title: "Generate the campaign",    body: "Tell Postora your goal, posting frequency, and which accounts to publish to — AI builds captions, hashtags, and a full monthly calendar." },
-    { n: "03", title: "Review & auto-publish",    body: "Approve the calendar once, and Postora publishes every post automatically, on schedule, at the best times." },
+    { n: "01", title: "Upload your media",          body: "Drop in product photos and videos for the month. Postora stores everything in your media library, ready to use." },
+    { n: "02", title: "Set your campaign",           body: "Pick a goal, how often to post, and which connected accounts to use. Premium plans can also theme the month around a seasonal campaign." },
+    { n: "03", title: "Review, edit, approve",       body: "AI builds a full monthly calendar — the right image, caption, and hashtags for every day. Edit anything you like, then approve once to lock it in." },
   ];
 
   return (
@@ -346,33 +350,33 @@ function HowItWorks() {
 // ─────────────────────────────────────────────────────────────────────────────
 const FEATURES = [
   {
-    title: "AI Captions",
-    body: "AI generates platform-specific captions and hashtags with brand tone consistency and engagement optimization.",
+    title: "AI-Written Captions",
+    body: "AI writes captions and hashtags in your brand's tone for every post in the month — no blank page, ever.",
     path: "M12 2l1.6 5H19l-4.1 3 1.5 5L12 12l-4.4 3 1.5-5L5 7h5.4z",
   },
   {
-    title: "Auto Schedule",
-    body: "AI builds your monthly posting schedule and picks the best times based on audience behavior.",
+    title: "Monthly Calendar",
+    body: "See the whole month at a glance. Every post lands on the right day, ready to review or edit before it goes live.",
     path: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
   },
   {
     title: "Media Library",
-    body: "One organised home for all your product photos and videos, analyzed automatically by AI.",
+    body: "One organized home for all your product photos and videos, ready for AI to pull from when building your calendar.",
     path: "M3 3h18v18H3zM3 9h18M9 21V9",
   },
   {
-    title: "Auto Publish",
-    body: "Fully autonomous publishing system that executes your content calendar without manual intervention.",
+    title: "One-Click Approve",
+    body: "Review the month once, hit approve, and Postora handles publishing on schedule from there.",
     path: "M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z",
   },
   {
-    title: "Reports & Insights",
-    body: "Track reach, engagement, and failed posts, with AI recommendations to improve future campaigns.",
+    title: "Reports",
+    body: "Track what's published, what's scheduled, and how each post is performing, broken down by platform.",
     path: "M18 20V10M12 20V4M6 20v-6",
   },
   {
     title: "Brand Tone",
-    body: "Define your business name, logo, brand colors, and tone once. Every post respects it, forever.",
+    body: "Set your business name, logo, and voice once during onboarding. Every caption stays on-brand automatically.",
     path: "M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z",
   },
 ];
@@ -426,10 +430,10 @@ function Features() {
 // ─────────────────────────────────────────────────────────────────────────────
 function Stats() {
   const stats = [
-    { value: "10×",  label: "AI-driven content creation speed" },
-    { value: "5",    label: "Multi-platform AI distribution system" },
-    { value: "0",    label: "Zero manual content management" },
-    { value: "100%", label: "Fully autonomous marketing system" },
+    { value: "1",    label: "Upload, once a month" },
+    { value: "30",   label: "Days of content generated at once" },
+    { value: "3",    label: "Platforms you can post to" },
+    { value: "1",    label: "Approval, and you're done" },
   ];
 
   return (
@@ -462,7 +466,11 @@ function Stats() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PRICING — restructured to match Postora's plan spec
+// PRICING — matches Postora's Starter/Pro/Premium spec.
+// NOTE: "Premium" here still needs to match the plan value your code actually
+// checks — getDashboardStats' PLAN_LIMITS and CampaignWizardModal's
+// TOP_TIER_PLAN both currently use "Elite", not "Premium". Flagged separately —
+// needs one decision applied everywhere, not just on this page.
 // ─────────────────────────────────────────────────────────────────────────────
 const PLANS = [
   {
@@ -490,9 +498,8 @@ const PLANS = [
       "50 media uploads/month",
       "Image & video support",
       "Up to 60 scheduled posts",
-      "Up to 5 connected social accounts",
+      "Up to 3 connected social accounts",
       "Advanced analytics",
-      "AI recommendations",
     ],
     cta: "Start Pro",
     featured: true,
@@ -501,14 +508,12 @@ const PLANS = [
     name: "Premium",
     price: "$19.99",
     period: "/mo",
-    desc: "For businesses that want full campaign automation, graphics included.",
+    desc: "For businesses that want full campaign automation, seasonal content included.",
     features: [
       "Everything in Pro, plus:",
       "Unlimited media uploads",
       "Unlimited scheduled posts",
-      "AI-generated promotional graphics, posters & carousels",
-      "AI story graphics",
-      "Seasonal campaign graphics",
+      "Seasonal campaign themes",
       "Priority AI processing",
     ],
     cta: "Start Premium",
@@ -616,13 +621,13 @@ function Cta() {
           className="font-display font-extrabold"
           style={{ fontSize: "clamp(28px, 5vw, 52px)", color: "var(--text-1)", letterSpacing: "-0.03em", lineHeight: 1.1 }}
         >
-          Stop managing content{" "}
+          Stop staring at a{" "}
           <span style={{ color: "var(--green)", textShadow: "0 0 30px rgba(0,201,141,0.3)" }}>
-            manually
+            blank content calendar
           </span>
         </h2>
         <p style={{ fontSize: 17, color: "var(--text-2)", maxWidth: 500 }}>
-          Join businesses using AI to run their entire content marketing automatically.
+          Upload your media, set your goal, and let AI build the month. You just approve it.
         </p>
         <Link href="/signup" className="btn-primary" style={{ fontSize: 15, padding: "15px 36px" }}>
           Get started for free
@@ -665,7 +670,7 @@ function Footer() {
                 marginTop: "10px"
               }}
             >
-              AI marketing automation system that generates, schedules, and publishes content autonomously across platforms.
+              Upload your media once and let AI build, schedule, and publish a full month of content across your connected accounts.
             </p>
           </div>
 
@@ -807,7 +812,8 @@ function Footer() {
             © {new Date().getFullYear()} Postora. All rights reserved.
           </p>
 
-          {/* Social Icons */}
+          {/* Social Icons — Postora's own social presence, unrelated to
+              user-connected accounts inside the product */}
           <div
             style={{
               display: "flex",

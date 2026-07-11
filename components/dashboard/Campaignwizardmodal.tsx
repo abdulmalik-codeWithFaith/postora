@@ -192,6 +192,21 @@ export default function CampaignWizardModal({
         createdAt: serverTimestamp(),
       });
 
+      // Trigger the actual generation job. The Firestore write above only
+      // creates the doc — nothing processes it until this call fires. If this
+      // fails outright (e.g. network drop before the request lands), surface
+      // it immediately rather than leaving the modal listening forever for a
+      // status change that will never come.
+      fetch("/api/campaigns/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId: campaignRef.id }),
+      }).catch((err) => {
+        console.error("Failed to trigger campaign generation:", err);
+        setGenerating(false);
+        setGenError("Couldn't reach the generation service. Please try again.");
+      });
+
       // Listen for the backend job to finish and flip status
       const unsub = onSnapshot(
         doc(db, "campaigns", campaignRef.id),
